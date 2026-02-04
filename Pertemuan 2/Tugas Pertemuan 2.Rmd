@@ -1,0 +1,206 @@
+---
+title: "Tugas Pertemuan 2"
+author: "Fikar"
+date: "2026-02-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load Data
+```{r}
+data <- read.csv("C:/Users/Hype AMD/OneDrive - apps.ipb.ac.id/A UP MY HARD SKILL/IPB/Matakuliaih/Semester 4/Visualisasi Data/Pertemuan 2/patient_segmentation_dataset.csv", sep=",")
+data <- as.data.frame(data)
+head(data)
+```
+
+# Struktur Data
+```{r}
+str(data)
+```
+
+# Load Library
+```{r}
+library(ggplot2)
+library(dplyr)
+library(ggridges) # buat plot sebaran yang keren
+library(wordcloud)
+library(tm)
+library(maps)
+```
+
+# Visualisasi Nilai Data (Magnitude)
+
+## Stacked Bar Chart
+```{r}
+ggplot(data, aes(x = City, fill = Gender)) +
+  geom_bar(position = "stack") +
+  scale_fill_manual(values = c("Male" = "#3A86FF", 
+                                "Female" = "#FF006E")) +
+  # geom_text untuk menampilkan angka jumlah di dalam bar
+  geom_text(stat = 'count', 
+            aes(label = after_stat(count)), 
+            position = position_stack(vjust = 0.5),
+            color = "white", fontface = "bold") +
+  labs(title = "Distribusi Gender Berdasarkan Kota",
+       x = "Kota", 
+       y = "Jumlah Pasien",
+       fill = "Gender") +
+  theme_minimal() +
+  # Menambahkan rotasi pada teks sumbu X jika nama kota terlalu panjang
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+Interpretasi Plot 1:
+
+Visualisasi ini menunjukkan distribusi jumlah pasien berdasarkan kota dan jenis kelamin, di mana terlihat adanya ketimpangan data yang sangat mencolok pada kategori "Unknown". Kota dengan label tidak diketahui tersebut mendominasi grafik dengan total 1.012 pasien, yang terdiri dari 524 pria dan 488 wanita. Hal ini mengindikasikan bahwa sebagian besar data alamat pasien dalam dataset ini tidak terinput dengan lengkap.
+
+Jika mengabaikan data yang tidak diketahui tersebut, distribusi pasien di kota-kota lain cenderung lebih merata dengan jumlah di bawah 100 pasien per kota. Springfield muncul sebagai kota dengan identitas jelas yang memiliki jumlah pasien tertinggi, yakni 80 pasien dengan dominasi pria sebanyak 48 orang. Sementara itu, Chicago berada di posisi berikutnya dengan total 82 pasien, namun dengan proporsi wanita (45 orang) yang sedikit lebih banyak dibandingkan pria (37 orang). Secara umum, meskipun terdapat variasi kecil di tiap lokasi, keseimbangan antara jumlah pasien pria dan wanita tetap terjaga di hampir seluruh wilayah yang terdata.
+
+## Grouped Bar Chart
+```{r}
+# 1. Menghitung rata-rata BMI per Jenis Asuransi dan Gender
+df_summary_bmi <- data %>%
+  group_by(Insurance_Type, Gender) %>%
+  summarise(mean_bmi = mean(BMI, na.rm = TRUE), .groups = 'drop') %>%
+  arrange(desc(mean_bmi))
+
+# 2. Visualisasi Grouped Bar Chart
+ggplot(df_summary_bmi, aes(x = reorder(Insurance_Type, -mean_bmi), 
+                           y = mean_bmi, 
+                           fill = Gender)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("Male" = "#06A77D", 
+                               "Female" = "#D90368")) +
+  geom_text(aes(label = round(mean_bmi, 1)), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.5, size = 3.5) +
+  labs(title = "Rata-rata BMI per Jenis Asuransi dan Gender",
+       x = "Jenis Asuransi", 
+       y = "Rata-rata BMI",
+       fill = "Gender") +
+  theme_minimal()
+```
+Interpretasi Plot 2:
+
+Visualisasi ini membandingkan indeks massa tubuh (BMI) rata-rata pasien berdasarkan jenis asuransi yang digunakan dan dikelompokkan menurut jenis kelamin. Secara keseluruhan, terlihat tren yang konsisten di mana rata-rata BMI pasien wanita cenderung lebih tinggi dibandingkan pasien pria di seluruh kategori asuransi.
+
+Pasien dengan asuransi Private memiliki rata-rata BMI tertinggi bagi wanita, yaitu sebesar 32.5, sementara pria pada kategori yang sama berada di angka 29.3. Angka yang hampir serupa ditemukan pada pengguna Medicare, dengan rata-rata BMI wanita 32.4 dan pria 29.4. Untuk kategori Medicaid, rata-rata BMI wanita berada di angka 32.0 dan pria merupakan yang terendah di antara semua kelompok, yakni 28.8.
+
+Perbedaan (gap) antara pria dan wanita paling kecil terlihat pada kategori Self-Pay (Bayar Mandiri), di mana rata-rata BMI wanita adalah 30.7 dan pria 30.0. Secara klinis, rata-rata BMI di seluruh kelompok ini berada di atas angka 25.0, yang mengindikasikan bahwa mayoritas pasien dalam kelompok asuransi ini berada dalam kategori berat badan berlebih (overweight) hingga obesitas.
+
+# Visualisasi Sebaran Data
+
+## Histogram 
+```{r}
+# Visualisasi Sebaran Hari Sejak Kunjungan Terakhir
+ggplot(data, aes(x = Days_Since_Last_Visit)) +
+  geom_histogram(binwidth = 30, fill = "#4CC9F0", color = "white", alpha = 0.8) +
+  geom_vline(aes(xintercept = mean(Days_Since_Last_Visit, na.rm = TRUE)), 
+             color = "red", linetype = "dashed", size = 1) +
+  labs(title = "Distribusi Hari Sejak Kunjungan Terakhir Pasien",
+       subtitle = "Garis merah menunjukkan rata-rata hari",
+       x = "Jumlah Hari", 
+       y = "Jumlah Pasien") +
+  theme_minimal()
+```
+Interpretasi Plot Histogram:
+
+Visualisasi ini menunjukkan seberapa lama pasien tidak melakukan kunjungan medis, dengan rentang waktu yang tersebar dari 0 hingga lebih dari 350 hari. Secara keseluruhan, data menunjukkan distribusi yang relatif merata (uniform) di hampir seluruh rentang waktu, yang berarti jumlah pasien yang baru berkunjung (kurang dari 100 hari) hampir sama banyaknya dengan pasien yang sudah tidak berkunjung selama hampir satu tahun.
+
+Garis putus-putus merah menunjukkan rata-rata waktu kunjungan terakhir berada di kisaran 180 hari (sekitar 6 bulan). Hal ini menandakan bahwa secara tipikal, pasien dalam dataset ini melakukan kontrol medis setiap setengah tahun sekali.
+
+Terdapat sedikit penurunan frekuensi pada kelompok pasien yang sudah melampaui 350 hari, namun angka kunjungan pada rentang 0-300 hari tetap stabil tinggi dengan rata-rata di atas 150 pasien per kelompok hari (bin). Pola ini mengindikasikan bahwa sistem retensi pasien cukup stabil, meskipun tidak terlihat adanya lonjakan kunjungan baru yang signifikan di masa-masa terdekat (0-50 hari pertama).
+
+## Violin Plot
+```{r}
+# Visualisasi Distribusi Berat Badan Pasien (Violin Plot)
+ggplot(data, aes(x = "", y = Weight_kg)) +
+  geom_violin(fill = "orange", alpha = 0.5) +
+  geom_boxplot(width = 0.1, fill = "white", alpha = 0.7) +
+  labs(title = "Distribusi Berat Badan Pasien (Violin Plot)",
+       x = "", 
+       y = "Berat Badan (kg)") +
+  theme_minimal()
+```
+Interpretasi Plot Violin:
+Visualisasi ini menggambarkan sebaran berat badan pasien yang mencakup rentang cukup luas, mulai dari 50 kg hingga 120 kg. Bentuk violin yang tampak lebar secara konsisten dari bawah ke atas mengindikasikan bahwa variasi berat badan pasien sangat beragam dan tidak terpusat secara ekstrem pada satu angka tertentu saja.
+
+Berdasarkan komponen boxplot di dalamnya, nilai tengah atau median berat badan pasien berada di kisaran 86 kg. Sebaran utama data menunjukkan bahwa 50% dari total pasien memiliki berat badan yang berkisar antara 68 kg hingga 102 kg. Meskipun sebarannya luas, area plot yang paling menggembung terlihat di sekitar angka 90 kg, yang menandakan bahwa kelompok berat badan tersebut memiliki frekuensi pasien paling tinggi dibandingkan titik lainnya. Secara keseluruhan, profil ini menunjukkan bahwa mayoritas pasien dalam dataset cenderung memiliki berat badan yang masuk dalam kategori tinggi.
+
+# Visualisasi Perbandingan Sebaran Data
+
+## Multiple Violin Plot
+```{r}
+ggplot(data, aes(x = Insurance_Type, y = BMI, fill = Insurance_Type)) +
+  geom_violin(alpha = 0.5, color = "black") +
+  geom_boxplot(width = 0.1, fill = "white", alpha = 0.8, outlier.shape = NA) +
+  labs(title = "Distribusi BMI Berdasarkan Jenis Asuransi",
+       x = "Jenis Asuransi", 
+       y = "BMI") +
+  theme_minimal() +
+  theme(legend.position = "none") # Legend dihapus karena sudah ada label di sumbu X
+```
+Interpretasi Multiple Violin Plot:
+
+Visualisasi ini menunjukkan bahwa distribusi indeks massa tubuh (BMI) pasien cenderung seragam dan konsisten di seluruh kategori jenis asuransi, yang terlihat dari kurva yang saling bertumpuk secara signifikan. Mayoritas pasien, tanpa memandang jenis asuransi yang digunakan, memiliki profil BMI yang terpusat pada rentang 25 hingga 35, sebuah angka yang secara medis mengindikasikan kategori berat badan berlebih hingga obesitas.
+
+Meskipun polanya serupa, terdapat sedikit perbedaan karakteristik pada tiap kelompok; asuransi Medicaid memiliki konsentrasi pasien yang paling padat pada angka BMI sekitar 30, sementara asuransi Private menunjukkan sebaran yang sedikit lebih luas pada kelompok pasien dengan obesitas ekstrem di atas angka 40. Di sisi lain, kelompok Self-Pay dan Medicare memiliki bentuk distribusi yang sangat mirip dan stabil di seluruh rentang nilai. Secara keseluruhan, kemiripan bentuk kurva ini memberikan kesimpulan bahwa faktor jenis asuransi tidak memberikan perbedaan yang mencolok terhadap profil kesehatan fisik atau risiko obesitas pada populasi pasien ini.
+
+
+## Multiple Boxplot
+```{r}
+ggplot(data, aes(x = Gender, y = Age, fill = Gender)) +
+  geom_boxplot(outlier.color = "darkred", outlier.shape = 16, alpha = 0.7) +
+  labs(title = "Distribusi Umur Pasien Berdasarkan Jenis Kelamin",
+       x = "Jenis Kelamin",
+       y = "Umur (Tahun)") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set2") + # Memberi warna yang soft dan kontras
+  theme(legend.position = "none")
+```
+
+Interpretasi Multiple Boxplot:
+
+Visualisasi ini menunjukkan bahwa distribusi usia pasien di rumah sakit memiliki pola yang sangat serupa antara laki-laki dan perempuan, di mana nilai tengah atau median umur untuk kedua kelompok berada pada titik yang hampir identik, yaitu di kisaran 51 tahun. Hal ini menandakan bahwa mayoritas pasien yang dilayani berada pada kelompok usia dewasa matang dengan persebaran usia yang relatif seimbang dan konsisten pada kedua jenis kelamin.
+
+Data ini mencakup spektrum usia yang sangat lebar, mulai dari pasien muda di kisaran usia 18 hingga 20 tahun hingga pasien lansia yang mendekati 85 tahun, sebagaimana terlihat dari garis vertikal (whiskers) yang memanjang. Selain itu, tidak ditemukannya titik pencilan (outliers) pada grafik mengindikasikan bahwa data usia dalam populasi ini tersebar secara merata tanpa ada kelompok umur yang menyimpang secara ekstrem. Secara keseluruhan, dapat disimpulkan bahwa faktor jenis kelamin tidak memberikan perbedaan yang signifikan terhadap profil usia pasien, sehingga layanan kesehatan dalam dataset ini diakses secara merata oleh berbagai kalangan usia dari kedua gender.
+
+# Visualisasi Tambahan
+
+## Word Could
+```{r}
+word_counts <- table(data$Primary_Condition)
+wordcloud(names(word_counts), as.numeric(word_counts), scale=c(3,0.5), 
+          min.freq = 1, random.order = FALSE, colors=brewer.pal(8, "Dark2"))
+```
+Interpretasi Word Cloud:
+Word Cloud ini menampilkan berbagai kondisi medis utama yang dialami oleh pasien dalam dataset, dengan ukuran kata yang mencerminkan frekuensi kemunculannya. Kondisi "Hypertension" (tekanan darah tinggi) muncul sebagai kondisi yang paling umum, ditandai dengan ukuran kata yang paling besar, menunjukkan bahwa banyak pasien yang mengalami masalah ini. 
+
+Kondisi lain seperti "Diabetes", "Asthma", dan "Obesity" juga terlihat menonjol, menandakan prevalensi yang signifikan di antara pasien. Kondisi-kondisi medis yang lebih jarang terjadi, seperti "Anxiety" dan "Depression", ditampilkan dengan ukuran kata yang lebih kecil, menunjukkan bahwa mereka kurang umum dalam populasi pasien ini. Secara keseluruhan, Word Cloud ini memberikan gambaran visual yang cepat tentang kondisi kesehatan yang paling sering dihadapi oleh pasien, yang dapat membantu dalam perencanaan layanan kesehatan dan intervensi medis. Visualisasi data ini menggambarkan bahwa populasi pasien didominasi oleh kelompok dengan penyakit metabolik kronis, di mana Diabetes, 
+
+Kemudian label NONE muncul dengan ukuran yang cukup menonjol di antara daftar penyakit kronis lainnya. Hal ini menginterpretasikan adanya segmen pasien yang sehat atau tidak memiliki diagnosa penyakit kronis, yang kemungkinan besar berinteraksi dengan sistem kesehatan untuk keperluan administratif, kontrol rutin, atau tindakan preventif. Kehadiran kategori "NONE" ini memberikan keseimbangan pada profil data, menunjukkan bahwa populasi tidak sepenuhnya terdiri dari pasien dengan diagnosa berat, melainkan juga mencakup individu yang berfokus pada pemeliharaan kesehatan.
+
+## MAP CHART (Jumlah Pasien per State)
+```{r}
+# --- MAP CHART (Jumlah Pasien per State) ---
+# Hitung pasien per state
+state_map <- data %>% group_by(State) %>% summarise(Total = n())
+state_map$region <- tolower(state.name[match(state_map$State, state.abb)])
+
+all_states <- map_data("state")
+plot_map <- left_join(all_states, state_map, by = "region")
+
+ggplot(plot_map, aes(long, lat, group = group, fill = Total)) +
+  geom_polygon(color = "white") +
+  scale_fill_viridis_c(option = "magma") +
+  theme_void() +
+  labs(title = "Peta Konsentrasi Pasien di Amerika Serikat")
+```
+Interpretasi Map Chart:
+
+Peta tersebut menunjukkan sebaran konsentrasi pasien di Amerika Serikat di mana tingkat kepadatan dibedakan melalui gradasi warna, dengan warna kuning terang sebagai indikator jumlah tertinggi (mencapai angka 210) dan warna hitam sebagai jumlah terendah (di bawah 190).
+
+Dilihat dari visualisasinya, terdapat satu wilayah di bagian tenggara yang memiliki konsentrasi pasien paling tinggi karena berwarna kuning, sementara wilayah di ujung tenggara (semenanjung bawah) justru memiliki konsentrasi terendah dengan warna hitam. Sebagian besar wilayah lainnya di bagian barat dan tengah ditandai dengan warna abu-abu, yang berarti wilayah-wilayah tersebut tidak memiliki data atau tidak termasuk dalam perhitungan konsentrasi pasien pada peta ini.
+
