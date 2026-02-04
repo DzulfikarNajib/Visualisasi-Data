@@ -1,0 +1,1149 @@
+---
+title: "Praktikum 1 Visualisasi Data - Paralel 2"
+author: "Cindy Indriyani"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: 
+  html_document:
+    theme: united
+    toc: true
+    toc_float: true
+    code_folding: hide
+    df_print: paged
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+Proporsi Nilai Praktikum
+
+- Kehadiran: 15%
+
+- Keaktifan: 10%
+
+- Tugas/Latihan: 25%
+
+- Projek: 50%
+
+
+# Software yang Digunakan
+
+Pada praktikum ini digunakan beberapa software utama, yaitu:
+
+## R
+
+R merupakan bahasa pemrograman yang digunakan untuk analisis statistika, pengolahan data, dan visualisasi data.
+
+## RStudio
+
+RStudio adalah Integrated Development Environment (IDE) untuk R yang memudahkan pengguna dalam menulis, menjalankan, dan mengelola kode R.
+
+## R Markdown
+
+R Markdown digunakan untuk menggabungkan kode R, output, dan penjelasan dalam satu dokumen, sehingga memudahkan pembuatan laporan praktikum.
+
+# Environment RStudio
+
+RStudio terdiri dari empat panel utama:
+
+## Source
+
+Panel Source digunakan untuk menulis script R (`.R`) atau dokumen R Markdown (`.Rmd`).  
+
+Kode pada panel ini dapat dijalankan menggunakan shortcut:
+
+- **Ctrl + Enter** (Windows/Linux)
+
+- **Cmd + Enter** (Mac)
+
+## Console
+
+Panel Console digunakan untuk menjalankan perintah R secara langsung.
+
+Hasil eksekusi kode dan pesan error akan muncul di panel ini.
+
+## Environment
+
+Panel Environment menampilkan objek yang sedang aktif di R, seperti:
+
+- data frame
+
+- vektor
+
+- model statistik
+
+## Files, Plots, Packages, dan Help
+
+- **Files**: menampilkan file dan folder pada working directory  
+
+- **Plots**: menampilkan hasil visualisasi  
+
+- **Packages**: menampilkan package yang terpasang  
+
+- **Help**: menampilkan dokumentasi fungsi R  
+
+# Working Directory
+
+Working directory adalah folder tempat R membaca dan menyimpan file.
+
+Untuk mengecek working directory:
+
+```{r}
+getwd()
+```
+
+# Package R 
+
+Package yang digunakan dalam praktikum ini meliputi `DataExplorer` untuk eksplorasi data otomatis, `corrplot` untuk visualisasi matriks korelasi, `tidyverse` untuk manipulasi data, `ggpubr` dan `ggplot2` untuk visualisasi data, serta package bawaan R (base) untuk fungsi visualisasi dasar.
+
+Contoh package bawaan:
+
+- read.csv(): Digunakan untuk membaca file data berformat CSV (Comma Separated Values) dan mengimpornya ke dalam R sebagai data frame.
+
+- head(): Menampilkan beberapa baris teratas dari suatu objek data (default 6 baris) untuk melihat gambaran awal data.
+
+- str(): Menampilkan struktur internal data, termasuk tipe data setiap variabel dan contoh nilainya.
+
+- summary(): Memberikan ringkasan statistik deskriptif data, seperti minimum, maksimum, mean, median, dan kuartil.
+
+- plot(): Fungsi dasar untuk membuat berbagai jenis grafik, seperti scatter plot, line plot, dan visualisasi sederhana lainnya.
+
+- hist(): Digunakan untuk membuat histogram guna melihat distribusi suatu variabel numerik.
+
+- points(): Menambahkan titik ke grafik yang sudah ada, biasanya digunakan untuk overlay atau membedakan kelompok data.
+
+- lines(): Menambahkan garis pada grafik yang sudah ada, sering digunakan untuk menampilkan tren atau hubungan antar data.
+
+- text(): Menambahkan teks atau label pada grafik di posisi koordinat tertentu.
+
+- legend(): Menambahkan keterangan (legend) pada grafik untuk menjelaskan arti warna, simbol, atau garis yang digunakan.
+
+- abline(): Menambahkan garis referensi ke dalam grafik, baik garis horizontal, vertikal, maupun garis dengan persamaan tertentu.
+
+- density(): Menghitung estimasi fungsi kerapatan (density estimation) dari data numerik, yang sering digunakan untuk membuat kurva density.
+
+
+```{r}
+#install.packages(c(
+  #"DataExplorer",
+  #"corrplot",
+  #"tidyverse",
+  #"ggpubr",
+  #"ggplot2"))
+
+```
+
+## Load Data
+
+```{r}
+bank <- read.csv("C:/Visualisasi Data Praktikum P2/bank.csv", sep=",")
+bank <- as.data.frame(bank)
+```
+
+## Eksplorasi Data
+
+```{r}
+# Melihat data teratas
+head(bank)
+head(bank, 10) #10 data teratas
+bank[1:10,]
+```
+
+```{r}
+# Struktur kolom
+str(bank)
+```
+
+```{r}
+# Ringkasan Data
+summary(bank)
+```
+
+```{r}
+# Missing value check
+sum(is.na(bank))
+```
+
+## 1.Data Explorer
+
+Proses eksplorasi data otomatis untuk kebutuhan analisis dan pemodelan prediktif, agar tidak perlu EDA manual satu persatu.
+
+```{r}
+library(DataExplorer)
+plot_histogram(bank)
+plot_density(bank,geom_density_args = list(fill="steelblue"))
+plot_bar(bank)
+plot_correlation(bank, type = "c")   # correlation matrix (default)
+
+plot_correlation(bank, type = "continuous")
+
+```
+
+## 2.corrplot
+
+Package `corrplot` adalah package R yang digunakan sebagai alat eksplorasi visual untuk menampilkan matriks korelasi antar variabel. Package ini mendukung pengurutan variabel secara otomatis, sehingga membantu pengguna menemukan pola atau hubungan tersembunyi antar variabel yang mungkin sulit terlihat dari tabel angka biasa.
+
+Package ini mudah digunakan dan menyediakan banyak pilihan visualisasi, seperti:
+
+- berbagai metode plot (lingkaran, kotak, angka, dll),
+
+- pengaturan tata letak grafik,
+
+- warna,
+
+- legend, dan
+
+- label teks.
+
+
+```{r}
+#install.packages("corrplot")
+library("corrplot")
+library("tidyverse") #untuk menggunakan symbol %>%
+```
+
+```{r}
+# Membuat visualisasi matriks korelasi menggunakan corrplot
+corrplot(
+  
+  # Menghitung matriks korelasi dari variabel numerik saja
+  bank %>%
+    select(where(is.numeric)) %>%  # Memilih hanya kolom bertipe numerik
+    cor(),                           # Menghitung korelasi (default: Pearson)
+  
+  # Menentukan metode visualisasi korelasi
+  method = "pie",    # Korelasi ditampilkan dalam bentuk diagram pie
+  
+  # Menentukan bagian matriks korelasi yang ditampilkan
+  type = "lower",    # Hanya menampilkan bagian segitiga bawah matriks
+  
+  # Mengatur apakah diagonal utama ditampilkan
+  diag = FALSE       # Tidak menampilkan korelasi variabel dengan dirinya sendiri
+)
+
+```
+
+## 3. ggpubr
+
+Package ggplot2 dikenal sebagai package yang sangat baik dan fleksibel untuk membuat visualisasi data yang elegan di R. Namun, grafik yang dihasilkan secara default masih memerlukan penyesuaian sebelum siap digunakan untuk publikasi ilmiah. Selain itu, proses kustomisasi grafik pada ggplot2 memiliki sintaks yang relatif kompleks, sehingga cukup menyulitkan bagi pengguna yang tidak memiliki kemampuan pemrograman R tingkat lanjut.
+
+Package ggpubr hadir untuk mengatasi keterbatasan tersebut dengan menyediakan fungsi-fungsi yang mudah digunakan untuk membuat dan menyesuaikan grafik berbasis ggplot2 agar siap publikasi, tanpa memerlukan penulisan kode yang rumit.
+
+```{r}
+#install.packages("ggpubr")
+library("ggpubr")
+```
+
+### Histogram
+
+```{r}
+# Membuat histogram distribusi variabel usia (age)
+gghistogram(
+  bank,          # Data frame yang digunakan
+  x = "age",     # Variabel numerik yang akan ditampilkan pada sumbu X
+  fill = "pink"  # Warna isi batang histogram
+) +
+  
+  # Mengatur skala sumbu Y
+  scale_y_continuous(
+    expand = c(0, 0)  # Menghilangkan jarak kosong (padding) di awal dan akhir sumbu Y, batang histogram langsung nempel ke sumbu
+  )
+
+```
+
+### Density Plot
+
+```{r}
+ggdensity(bank,x ="age",fill ="pink")+
+ scale_y_continuous(expand = c(0,0))+
+ scale_x_continuous(expand = c(0,0))
+```
+
+```{r}
+# Mengambil nama kolom numerik dari data frame 'bank'
+names_cont <- colnames(
+  bank %>% 
+    select(where(is.numeric))  # Memilih kolom bertipe numerik
+)
+
+# Membuat list plot density untuk setiap variabel numerik
+p1 <- map(
+  names_cont,                # Iterasi setiap nama variabel numerik
+  ~ ggdensity(
+      bank,                  # Data yang digunakan
+      x = .x,                # Variabel yang diplot
+      fill = "pink"           # Warna area density
+    ) +
+    
+    # Menghilangkan ruang kosong (padding) pada sumbu Y
+    scale_y_continuous(expand = c(0, 0)) +
+    
+    # Menghilangkan ruang kosong (padding) pada sumbu X
+    scale_x_continuous(expand = c(0, 0))
+)
+
+# Menggabungkan seluruh plot density dalam satu tampilan
+ggarrange(plotlist = p1)
+
+```
+
+### ScatterPlot
+
+```{r}
+ggscatter(bank,x = "age",y="duration",color = "pink")
+```
+
+
+```{r}
+ggscatter(
+  bank,
+  x = "age",
+  y = "duration",
+  add = "reg.line",     # Tambah garis regresi
+  conf.int = TRUE,      # Tambah interval kepercayaan
+  point.params = list(color = "pink"),
+  add.params = list(
+    color = "blue",     # Warna garis regresi
+    fill = "lightgray"  # Warna area confidence interval
+  )
+)
+
+```
+
+```{r}
+ggscatter(
+  bank,
+  x = "age",
+  y = "duration",
+  add = "reg.line",
+  add.params = list(color = "blue"),
+  conf.int = TRUE
+) + 
+  stat_smooth(method = "lm", se = TRUE)
+
+```
+
+## 4. ggplot2
+
+```{r}
+#install.packages("ggplot2")
+library(ggplot2)
+```
+
+Satu Peubah:
+
+Data Kontinu:
+
+```{r}
+# Membuat objek ggplot dengan data bank dan memetakan variabel weight ke sumbu X
+a <- ggplot(bank, aes(x = weight))
+
+# Menambahkan grafik area berbasis histogram (binning)
+a + 
+  geom_area(
+    stat = "bin",        # Mengelompokkan data ke dalam bin (interval) seperti histogram
+    color = "blue",      # Warna garis tepi area
+    fill = "skyblue",    # Warna isi area
+    size = 1             # Ketebalan garis tepi
+  ) +
+  
+  # Menambahkan keterangan pada grafik
+  labs(
+    x = "x",             # Label sumbu X
+    y = "y",             # Label sumbu Y
+    title = "Title",     # Judul utama grafik
+    subtitle = "Subtitle", # Subjudul grafik
+    caption = "caption" # Keterangan tambahan (biasanya sumber data)
+  )
+
+```
+
+
+```{r}
+a + geom_histogram(binwidth = 10) # Menentukan lebar setiap batang histogram (interval kelas = 10 satuan)
+```
+
+Data Diskret:
+
+```{r}
+b <- ggplot(bank, aes(day))
+b + geom_bar(color="blue", fill = "pink") +
+    labs(
+      x = "x",
+      y = "y",
+      title = "Title",
+      subtitle = "Subtitle",
+      caption = "caption"
+    )
+```
+
+Dua Peubah
+
+X dan Y kontinu:
+
+```{r}
+# Membuat objek ggplot dengan data bank dan memetakan variabel
+# weight ke sumbu X dan hight ke sumbu Y
+f <- ggplot(bank, aes(weight, hight))
+
+# Menambahkan jitter plot untuk mengurangi tumpang tindih titik data
+f + 
+  geom_jitter(
+    color = "pink",   # Warna titik
+    size = 2,         # Ukuran titik
+    shape = "o"       # Bentuk titik (lingkaran)
+  )
+
+```
+
+X Diskret dan Y Kontinu:
+
+```{r}
+# Membuat objek ggplot dengan data bank dan memetakan
+# variabel day ke sumbu X dan weight ke sumbu Y
+g <- ggplot(bank, aes(day, weight))
+
+# Menambahkan bar chart dengan tinggi batang sesuai nilai weight
+g + 
+  geom_bar(
+    stat = "identity",   # Tinggi batang merepresentasikan nilai asli variabel weight
+    color = "blue"       # Warna garis tepi batang
+  ) +
+  
+  # Menambahkan keterangan pada grafik
+  labs(
+    x = "x",             # Label sumbu X
+    y = "y",             # Label sumbu Y
+    title = "Title",     # Judul utama grafik
+    subtitle = "Subtitle", # Subjudul grafik
+    caption = "caption" # Keterangan tambahan (misalnya sumber data)
+  )
+
+```
+
+
+```{r}
+# Membuat objek ggplot dengan data bank dan memetakan
+# variabel day ke sumbu X dan weight ke sumbu Y
+g <- ggplot(bank, aes(day, weight))
+
+# Menambahkan boxplot untuk setiap kategori day
+g + 
+  geom_boxplot(
+    aes(group = day)   # Mengelompokkan data berdasarkan variabel day
+  ) +
+  
+  # Menambahkan keterangan pada grafik
+  labs(
+    x = "x",             # Label sumbu X
+    y = "y",             # Label sumbu Y
+    title = "Title",     # Judul utama grafik
+    subtitle = "Subtitle", # Subjudul grafik
+    caption = "caption" # Keterangan tambahan (misalnya sumber data)
+  )
+
+```
+
+```{r}
+# Membuat objek ggplot dengan data bank dan memetakan
+# variabel job ke sumbu X dan age ke sumbu Y
+g1 <- ggplot(bank, aes(job, age))
+
+# Menambahkan violin plot untuk menampilkan distribusi usia (age)
+# pada setiap kategori pekerjaan (job)
+g1 + 
+  geom_violin(
+    scale = "area",        # Menyamakan luas setiap violin agar dapat dibandingkan
+    color = "#993399",     # Warna garis tepi violin
+    fill = "#993399"       # Warna isi violin
+  ) +
+  
+  # Menambahkan keterangan pada grafik
+  labs(
+    x = "x",               # Label sumbu X
+    y = "y",               # Label sumbu Y
+    title = "Title",       # Judul utama grafik
+    subtitle = "Subtitle", # Subjudul grafik
+    caption = "caption"   # Keterangan tambahan (misalnya sumber data)
+  )
+
+```
+
+X Diskret dan Y Diskret
+
+```{r}
+# Membuat objek ggplot dengan data bank dan memetakan
+# variabel education ke sumbu X dan job ke sumbu Y
+h <- ggplot(bank, aes(education, job))
+
+# Menambahkan jitter plot untuk menampilkan pasangan data
+# education dan job agar titik tidak saling menumpuk
+h + 
+  geom_jitter(
+    colour = "red",  # Warna titik
+    size = 1         # Ukuran titik
+  ) +
+  
+  # Menambahkan keterangan pada grafik
+  labs(
+    x = "x",               # Label sumbu X
+    y = "y",               # Label sumbu Y
+    title = "Title",       # Judul utama grafik
+    subtitle = "Subtitle", # Subjudul grafik
+    caption = "caption"   # Keterangan tambahan (misalnya sumber data)
+  )
+
+```
+
+# Fungsi Plot() 
+
+Fungsi plot() adalah fungsi bawaan R untuk membuat visualisasi dasar
+
+Format dasar: plot(x, y, type = "...", ...)
+ 
+ 
+KEUNTUNGAN plot():
+
+- Lebih cepat untuk eksplorasi data sederhana
+
+- Tidak perlu install package tambahan
+
+- Sintaks lebih ringkas untuk plot sederhana
+
+
+KEKURANGAN plot():
+
+- Kurang fleksibel untuk customisasi kompleks
+
+- Estetika kurang modern dibanding ggplot2
+
+- Lebih sulit untuk membuat plot multi-layer
+
+
+```{r}
+set.seed(123)  # set.seed() untuk reproducibility (hasil random yang sama)
+sample_data <- bank[sample(1:nrow(bank), 100), ]  
+```
+
+- sample() = ambil sampel random 100 baris dari data
+
+- nrow() = menghitung jumlah baris
+
+
+Urutkan berdasarkan age untuk visualisasi yang lebih jelas
+
+- order() = menghasilkan indeks urutan
+
+```{r}
+sample_data <- sample_data[order(sample_data$age), ]
+```
+
+```{r}
+# TYPE = "p" : Plot Titik (Scatter Plot)
+# Ini adalah default type, membuat scatter plot
+plot(sample_data$age, sample_data$balance,
+     type = "p",  # "p" = points (titik)
+     main = "Scatter Plot (type = 'p')",  # main = judul plot
+     xlab = "Usia",                       # xlab = label sumbu x
+     ylab = "Saldo",                      # ylab = label sumbu y
+     col = "steelblue",                   # col = color (warna titik)
+     pch = 19,                            # pch = plotting character (bentuk titik)
+     cex = 1.5)                           # cex = character expansion (ukuran titik)
+```
+
+- pch = 19 adalah lingkaran solid (default)
+
+- Angka pch lainnya: 0-25 (lihat penjelasan di bawah)
+
+```{r}
+# TYPE = "l" : Plot Garis (Line Plot)
+# Menghubungkan titik-titik dengan garis tanpa menampilkan titik
+plot(sample_data$age, sample_data$balance,
+     type = "l",  # "l" = lines (garis)
+     main = "Line Plot (type = 'l')",
+     xlab = "Usia",
+     ylab = "Saldo",
+     col = "darkgreen",
+     lwd = 2,     # lwd = line width (ketebalan garis)
+     lty = 1)     # lty = line type (jenis garis)
+# lty options: 1=solid, 2=dashed, 3=dotted, 4=dotdash, 5=longdash, 6=twodash
+# Cocok untuk data time series atau data yang berurutan
+```
+
+```{r}
+# TYPE = "b" : Plot Titik dan Garis 
+# Menampilkan titik DAN garis, dengan jarak antara titik dan garis
+plot(sample_data$age, sample_data$balance,
+     type = "b",  # "b" = both (titik dan garis)
+     main = "Points and Lines (type = 'b')",
+     xlab = "Usia",
+     ylab = "Saldo",
+     col = "red",
+     pch = 16,    # pch 16 = lingkaran solid kecil
+     lwd = 2)
+# Ada jarak kecil antara titik dan garis
+# Berguna untuk melihat data point sekaligus trendnya
+```
+
+```{r}
+# TYPE = "o" : Plot Titik Overlapped dengan Garis
+# Garis MENEMBUS titik (overplotted)
+plot(sample_data$age, sample_data$balance,
+     type = "o",  # "o" = overplotted (titik ditimpa garis)
+     main = "Overplotted Points and Lines (type = 'o')",
+     xlab = "Usia",
+     ylab = "Saldo",
+     col = "purple",
+     pch = 21,    # pch 21 = lingkaran dengan border
+     bg = "yellow",  # bg = background color (warna isi titik untuk pch 21-25)
+     lwd = 2)
+# Perbedaan dengan type="b": garis menembus titik, tidak ada jarak
+# pch 21-25 memiliki fill dan border terpisah
+```
+
+```{r}
+# TYPE = "h" : Plot Garis Vertikal (Histogram-like)
+# Membuat garis vertikal dari setiap titik ke y=0
+plot(sample_data$age, sample_data$balance,
+     type = "h",  # "h" = histogram-like vertical lines
+     main = "Vertical Lines (type = 'h')",
+     xlab = "Usia",
+     ylab = "Saldo",
+     col = "navy",
+     lwd = 3)
+```
+
+```{r}
+# TYPE = "s" : Plot Tangga (Step Function)
+# Membuat fungsi tangga (step function)
+plot(sample_data$age, sample_data$balance,
+     type = "s",  # "s" = steps (tangga)
+     main = "Step Function (type = 's')",
+     xlab = "Usia",
+     ylab = "Saldo",
+     col = "darkred",
+     lwd = 2)
+# Berguna untuk visualisasi data diskrit atau data yang berubah bertahap
+# Garis horizontal dulu, baru vertikal
+# Ada juga type="S" (huruf besar) yang vertikal dulu, baru horizontal
+```
+
+```{r}
+# TYPE = "n" : No Plotting (Hanya Sumbu)
+# Tidak membuat plot sama sekali, hanya setup sumbu
+# Berguna sebagai "canvas" untuk plot kustom bertahap
+plot(sample_data$age, sample_data$balance,
+     type = "n",  # "n" = no plotting
+     main = "Canvas with Multiple Layers (type = 'n')",
+     xlab = "Usia",
+     ylab = "Saldo")
+```
+
+
+```{r}
+plot(sample_data$age, sample_data$balance,
+     type = "n",              
+     
+     # Setup judul dan label
+     main = "Saldo Bank Berdasarkan Status Pernikahan",
+     xlab = "Usia (Tahun)",
+     ylab = "Saldo (Euro)",
+     
+     # Setup range sumbu
+     xlim = range(sample_data$age),
+     ylim = range(sample_data$balance),
+     
+     # Kustomisasi
+     cex.main = 1.8,
+     col.main = "darkblue",
+     las = 1
+)
+
+# Tambahkan layer-layer secara manual:
+# Layer 1: Tambah titik untuk kategori tertentu
+points(sample_data$age[sample_data$marital == "single"], 
+       sample_data$balance[sample_data$marital == "single"],
+       col = "blue", pch = 16, cex = 1.5)
+
+# Layer 2: Tambah titik untuk kategori lain
+points(sample_data$age[sample_data$marital == "married"], 
+       sample_data$balance[sample_data$marital == "married"],
+       col = "red", pch = 17, cex = 1.5)
+
+# Layer 3: Tambah titik untuk kategori lain lagi
+points(sample_data$age[sample_data$marital == "divorced"], 
+       sample_data$balance[sample_data$marital == "divorced"],
+       col = "green", pch = 18, cex = 1.5)
+
+# Tambah legend
+legend("topright",  # posisi legend: "topleft", "topright", "bottomleft", "bottomright"
+       legend = c("Single", "Married", "Divorced"),
+       col = c("blue", "red", "green"),
+       pch = c(16, 17, 18),
+       cex = 0.8)  # cex di legend mengatur ukuran teks legend
+```
+
+`PENJELASAN PARAMETER PLOT() YANG SERING DIGUNAKAN`
+
+PARAMETER WARNA (col, bg):
+
+- col = warna utama (titik, garis, border)
+
+- bg = background/fill color (hanya untuk pch 21-25)
+
+
+Cara menentukan warna:
+
+1. Nama: "red", "blue", "steelblue", "darkgreen"
+
+2. Hex code: "#FF5733"
+
+3. RGB: rgb(255, 87, 51, maxColorValue=255)
+
+4. Angka: 1=black, 2=red, 3=green, 4=blue, dst
+
+
+PARAMETER PCH (plotting character):
+
+pch menentukan bentuk titik:
+
+0 = kotak kosong          15 = kotak solid
+
+1 = lingkaran kosong      16 = lingkaran solid
+
+2 = segitiga atas kosong  17 = segitiga atas solid
+
+3 = plus (+)              18 = diamond solid
+
+4 = cross (x)             19 = lingkaran solid besar
+
+5 = diamond kosong        20 = titik kecil solid
+
+6 = segitiga bawah kosong
+
+7-14 = variasi lainnya
+
+21 = lingkaran dengan fill dan border
+
+22 = kotak dengan fill dan border
+
+23 = diamond dengan fill dan border
+
+24 = segitiga atas dengan fill dan border
+
+25 = segitiga bawah dengan fill dan border
+
+
+```{r}
+# Semua pch:
+plot(1:25, rep(1, 25), pch = 1:25, cex = 2, 
+     main = "Semua Bentuk pch (1-25)",
+     xlab = "Nilai pch", ylab = "",
+     ylim = c(0.5, 1.5), yaxt = "n")  
+# ylim = batas sumbu y
+# yaxt = "n" menghilangkan axis y
+text(1:25, rep(0.8, 25), labels = 1:25, cex = 0.8)
+# text() menambahkan teks pada koordinat tertentu
+```
+
+`PARAMETER CEX (character expansion):`
+
+Mengatur ukuran elemen:
+
+- cex = ukuran umum
+
+- cex.main = ukuran judul
+
+- cex.lab = ukuran label axis
+
+- cex.axis = ukuran angka di axis
+
+Default = 1, lebih besar = lebih besar, lebih kecil = lebih kecil
+
+
+
+`PARAMETER LWD (line width):`
+
+Mengatur ketebalan garis
+
+Default = 1
+
+lwd = 2 (dua kali lebih tebal), lwd = 0.5 (setengah)
+
+
+`PARAMETER LTY (line type):`
+
+1 = solid (garis utuh) ———————
+
+2 = dashed (putus-putus) — — — —
+
+3 = dotted (titik-titik) · · · · · ·
+
+4 = dotdash (titik-garis) · — · —
+
+5 = longdash (garis panjang) —— —— ——
+
+6 = twodash (dua garis) — — — —
+
+
+```{r}
+#Line types:
+plot(1:6, 1:6, type = "n",
+     main = "Jenis-jenis Line Type (lty)",
+     xlab = "", ylab = "", xlim = c(0, 7))
+for(i in 1:6) {
+  lines(c(1, 6), c(i, i), lty = i, lwd = 2)
+  text(0.5, i, paste("lty =", i), cex = 0.8)
+}
+```
+
+# Kustomisasi 
+
+## Scatter Plot
+
+```{r}
+# Mengatur jarak teks sumbu
+# mgp = c(jarak_judul, jarak_angka, jarak_garis)
+par(
+  mar = c(8, 8, 6, 2),      # Margin (bawah, kiri, atas, kanan)
+                            # mar = c(bottom, left, top, right)
+  mgp = c(4.4, 1.5, 0)      # Menggeser posisi teks sumbu
+                            # mgp = c(axis.title, axis.label, axis.line)
+)
+
+plot(
+  bank$age, bank$balance,
+  type = "p",               # "p" = point (scatter plot)
+
+  main = "Hubungan Usia dan Saldo Bank",   # Judul utama
+  sub  = "Data Tahun 2026",                # Sub-judul
+  xlab = "Usia (Tahun)",                   # Label sumbu X
+  ylab = "Saldo (Euro)",                   # Label sumbu Y
+
+  col = "steelblue",       # Warna titik
+  col.main = "#990033",    # Warna judul
+  col.lab  = "blue",       # Warna label sumbu
+  col.sub  = "#ff6666",    # Warna sub-judul
+
+  cex = 0.9,               # Ukuran titik
+  cex.main = 2,            # Ukuran teks judul utama
+  cex.lab  = 1.5,          # Ukuran teks label sumbu
+  cex.sub  = 1.2,          # Ukuran teks sub-judul
+  cex.axis = 1.1,          # Ukuran teks angka sumbu
+
+  font.main = 4,           # Style font judul (4 = italic)
+  font.lab  = 2,           # Style font label (2 = bold)
+  font.sub  = 3,           # Style font sub (3 = italic)
+
+  pch = 19,                # Bentuk titik (19 = solid circle)
+
+  xlim = c(15, 75),        # Batas sumbu X
+  ylim = c(-10000, 60000), # Batas sumbu Y
+
+  las = 1,                 # Agar angka sumbu horizontal (0=default)
+  bg = "white"             # Background plot
+)
+
+grid(col = "gray90", lty = 2, lwd = 1)  # Menambahkan grid
+
+abline(h = 0, col = "red", lwd = 2, lty = 2)           # Garis horizontal di y=0
+abline(v = mean(bank$age), col = "darkgreen", lwd = 2, lty = 3) # Garis vertikal rata-rata usia
+
+```
+
+## Scatter Plot dengan Kategori dan Label
+
+```{r}
+
+# Mengatur jarak teks sumbu
+# mgp = c(jarak_judul, jarak_angka, jarak_garis)
+par(mar = c(8, 8, 6, 2),      # Margin kiri diperbesar
+    mgp = c(4.4, 1.5, 0))      # Label sumbu Y digeser menjauh
+
+# Filter data dengan balance ekstrem
+extreme_data <- bank[bank$balance > 40000 | bank$balance < -3000, ]
+
+plot(bank$age, bank$balance,
+     type = "n",              # "n" = no plotting, hanya setup canvas
+     
+     main = "Saldo Bank Berdasarkan Status Pernikahan",
+     xlab = "Usia (Tahun)",
+     ylab = "Saldo (Euro)",
+     
+     cex.main = 1.8,
+     col.main = "darkblue",
+     font.main = 2,
+     
+     cex.lab = 1.3,
+     
+     las = 1,
+     
+     xlim = c(15, 75),
+     ylim = c(-10000, 60000)
+)
+
+# Tambahkan grid dulu (di belakang)
+grid(col = "gray85", lty = 2)
+
+# Tambahkan titik untuk setiap kategori dengan warna berbeda
+# Single
+points(bank$age[bank$marital == "single"],
+       bank$balance[bank$marital == "single"],
+       col = "blue",         # Warna untuk single
+       pch = 16,             # Lingkaran solid
+       cex = 1.5)            # Ukuran titik
+
+# Married
+points(bank$age[bank$marital == "married"],
+       bank$balance[bank$marital == "married"],
+       col = "red",          # Warna untuk married
+       pch = 17,             # Segitiga
+       cex = 1.5)
+
+# Divorced
+points(bank$age[bank$marital == "divorced"],
+       bank$balance[bank$marital == "divorced"],
+       col = "darkgreen",    # Warna untuk divorced
+       pch = 18,             # Diamond
+       cex = 1.5)
+
+# Tambahkan text label untuk data ekstrem
+text(x = extreme_data$age,     # Koordinat X
+     y = extreme_data$balance, # Koordinat Y
+     labels = rownames(extreme_data), # Teks yang ditampilkan
+     col = "purple",          # Warna teks
+     cex = 0.7,               # Ukuran teks
+     pos = 3,                 # Posisi: 1=bawah, 2=kiri, 3=atas, 4=kanan
+     font = 2)                # Bold
+
+# Tambahkan garis horizontal di y=0
+abline(h = 0, col = "red", lwd = 2, lty = 2)
+
+# Tambahkan legend
+legend("topleft",
+       legend = c("Single", "Married", "Divorced"),
+       col = c("blue", "red", "darkgreen"),
+       pch = c(16, 17, 18),
+       cex = 0.6,
+       bg = "white",
+       box.lwd = 2,
+       title = "Status Pernikahan",
+       title.col = "darkblue")
+```
+
+
+## Barplot
+
+```{r}
+
+library(ggplot2)
+
+
+# Menghitung frekuensi pekerjaan
+
+job_counts <- as.data.frame(table(bank$job))
+colnames(job_counts) <- c("job", "count")
+
+
+# Mengurutkan dari jumlah terbesar ke kecil
+
+job_counts$job <- factor(
+  job_counts$job,
+  levels = job_counts$job[order(job_counts$count)]
+)
+
+
+# Membuat barplot horizontal
+
+ggplot(job_counts, aes(x = job, y = count, fill = job)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +   # Bar sesuai frekuensi
+  coord_flip() +                                       # Horizontal
+  geom_text(
+    aes(label = count),
+    hjust = -0.1,                                      # Posisi angka di ujung bar
+    color = "darkred",
+    fontface = "bold",
+    size = 4
+  ) +
+  labs(
+    title = "Distribusi Pekerjaan Nasabah Bank",
+    subtitle = "Survei 2026",
+    x = "Jenis Pekerjaan",
+    y = "Jumlah Nasabah"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18),
+    axis.text.y = element_text(size = 11)
+  ) +
+  expand_limits(y = max(job_counts$count) * 1.1)       # Ruang untuk label angka
+
+
+```
+
+## Histogram
+
+```{r}
+hist(bank$age,
+     
+     # JUDUL
+     main = "Distribusi Usia Nasabah Bank",
+     xlab = "Usia (Tahun)",
+     ylab = "Density",
+     
+     # BREAKS
+     breaks = 20,            # Jumlah bins/bar
+     # Alternatif:
+     # breaks = "Sturges"   # Metode Sturges (default)
+     # breaks = "Scott"     # Metode Scott
+     # breaks = "FD"        # Freedman-Diaconis
+     # breaks = seq(10, 80, by=5)  # Custom breaks
+     
+     # WARNA
+     col = "lightblue",      # Warna fill
+     border = "darkblue",    # Warna border
+     
+     # UKURAN
+     cex.main = 1.8,
+     cex.lab = 1.3,
+     cex.axis = 1.1,
+     
+     # FONT
+     col.main = "darkred",
+     font.main = 2,
+     
+     # STYLE SUMBU
+     las = 1,
+     
+     # PROBABILITY
+     freq = FALSE,            # TRUE=frequency, FALSE=probability density
+     
+     # BATAS
+     xlim = c(10, 80),
+     ylim = c(0, 0.10)
+)
+
+# Tambahkan garis density curve
+lines(density(bank$age),     # Density object
+      col = "red",           # Warna garis
+      lwd = 3,               # Ketebalan
+      lty = 1)               # Tipe garis
+
+# Tambahkan garis vertikal untuk mean dan median
+abline(v = mean(bank$age),   # Mean
+       col = "darkgreen",
+       lwd = 3,
+       lty = 2)
+
+abline(v = median(bank$age), # Median
+       col = "blue",
+       lwd = 3,
+       lty = 3)
+
+# Tambahkan legend
+legend("topright",
+       legend = c("Histogram", "Density Curve", "Mean", "Median"),
+       col = c("lightblue", "red", "darkgreen", "blue"),
+       lwd = c(10, 3, 3, 3),
+       lty = c(1, 1, 2, 3),
+       cex = 1.1,
+       bg = "grey")
+
+# Tambahkan grid
+grid(col = "gray80", lty = 2)
+```
+
+
+## Persamaan Matematika pada Plot
+
+```{r}
+plot(1:10, 1:10,
+     type = "n",
+     main = "Contoh Persamaan Matematika",
+     xlab = "X",
+     ylab = "Y")
+
+# Tambahkan persamaan regresi linear
+text(3, 9, 
+     expression(hat(beta) == (X^t * X)^{-1} * X^t * y),
+     cex = 1.5,
+     col = "darkblue")
+
+# Tambahkan persamaan mean
+text(7, 6,
+     expression(bar(x) == sum(frac(x[i], n), i==1, n)),
+     cex = 1.5,
+     col = "darkred")
+
+# Tambahkan persamaan lainnya
+text(5, 3,
+     expression(sigma^2 == frac(1, n) * sum((x[i] - bar(x))^2, i==1, n)),
+     cex = 1.3,
+     col = "darkgreen")
+
+```
+
+# Ringkasan Parameter
+
+```{r}
+# WARNA (Color)
+# - col       : warna utama (titik, garis, fill)
+# - col.main  : warna judul
+# - col.lab   : warna label sumbu
+# - col.sub   : warna sub-judul
+# - border    : warna border (barplot, boxplot, histogram)
+# - bg        : background / fill color (pch 21–25)
+
+# UKURAN (Size)
+# - cex       : ukuran umum (titik, teks)
+# - cex.main  : ukuran judul
+# - cex.lab   : ukuran label sumbu
+# - cex.sub   : ukuran sub-judul
+# - cex.axis  : ukuran angka sumbu
+# - cex.names : ukuran nama kategori (barplot)
+# - lwd       : ketebalan garis
+
+# FONT
+# - font      : 1=plain, 2=bold, 3=italic, 4=bold+italic
+# - font.main : font judul
+# - font.lab  : font label sumbu
+# - font.sub  : font sub-judul
+
+# GARIS (Line)
+# - lty       : tipe garis
+#               1=solid, 2=dashed, 3=dotted, 4=dotdash,
+#               5=longdash, 6=twodash
+# - lwd       : ketebalan garis
+
+# SIMBOL (pch)
+# - 0–14      : simbol kosong
+# - 15–20     : simbol solid
+# - 21–25     : simbol dengan fill (bg) dan border (col)
+
+# SUMBU (Axis)
+# - las       : orientasi label (0=parallel, 1=horizontal,
+#               2=perpendicular, 3=vertical)
+# - xlim      : batas sumbu X
+# - ylim      : batas sumbu Y
+
+# TATA LETAK (Layout)
+# - par(mfrow = c(nrow, ncol)) : multiple plot per baris
+# - mar       : margin dalam
+# - oma       : outer margin
+
+# FUNGSI TAMBAHAN
+# - grid()    : menambahkan grid
+# - abline()  : garis referensi (h, v, atau a & b)
+# - legend()  : menambahkan legend
+# - text()    : teks pada koordinat tertentu
+# - mtext()   : teks pada margin
+# - lines()   : menambahkan garis
+# - points()  : menambahkan titik
+```
+
+Contoh warna: https://r-graph-gallery.com/ggplot2-color.html, https://sape.inf.usi.ch/quick-reference/ggplot2/colour
+
+
+
+
+
+
