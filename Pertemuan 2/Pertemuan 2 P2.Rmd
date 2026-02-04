@@ -1,0 +1,877 @@
+---
+title: "Praktikum 2 Visualisasi Data - Paralel 2"
+author: "Cindy Indriyani"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: 
+  html_document:
+    theme: united
+    toc: true
+    toc_float: true
+    code_folding: hide
+    df_print: paged
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+# Load Data
+
+```{r}
+
+data <- read.csv("C:/Visualisasi Data Praktikum P2/patient_segmentation_dataset.csv", sep=",")
+data <- as.data.frame(data)
+head(data)
+```
+
+```{r}
+str(data)
+```
+- PatientID: ID unik pasien (nomor identitas)
+
+- Age: Umur pasien (tahun)
+
+- Gender: Jenis kelamin (Male/Female)
+
+- State: Negara bagian tempat tinggal (kode 2 huruf)
+
+- City: Kota tempat tinggal
+
+- Height_cm: Tinggi badan (centimeter)
+
+- Weight_kg: Berat badan (kilogram)
+
+- BMI: Indeks massa tubuh (Body Mass Index)
+
+- Insurance_Type: Jenis asuransi kesehatan (Private/Medicare/Medicaid/Self Pay)
+
+- Primary_Condition: Penyakit/kondisi utama pasien
+
+- Num_Chronic_Conditions: Jumlah penyakit kronis yang diderita
+
+- Annual_Visits: Jumlah kunjungan ke fasilitas kesehatan per tahun
+
+- Avg_Billing_Amount: Rata-rata tagihan biaya kesehatan (dollar)
+
+- Last_Visit_Date: Tanggal kunjungan terakhir
+
+- Days_Since_Last_Visit: Jumlah hari sejak kunjungan terakhir
+
+- Preventive_Care_Flag: Indikator perawatan pencegahan (0=tidak, 1=ya)
+
+# Package
+
+```{r}
+library(ggplot2)   # Digunakan untuk visualisasi data berbasis Grammar of Graphics
+library(ggridges)  # Digunakan untuk membuat ridge plot (joy plot) untuk membandingkan distribusi data antar kelompok
+library(dplyr)     # Digunakan untuk manipulasi dan transformasi data (filter, select, mutate, summarise, group_by)
+
+```
+
+# Visualisasi Nilai Data
+
+## Bar Chart
+
+```{r}
+ggplot(data, aes(x = Insurance_Type, fill = Insurance_Type)) +
+  geom_bar() +
+  geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.5) +
+  labs(title = "Distribusi Pasien Berdasarkan Jenis Asuransi",
+       x = "Jenis Asuransi", 
+       y = "Jumlah Pasien") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r}
+# Kostum warna manual
+ggplot(data, aes(x = Insurance_Type, fill = Insurance_Type)) +
+  geom_bar() +
+  geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.5) +
+  scale_fill_manual(values = c("Private" = "#FF6B6B", 
+                                "Medicare" = "#4ECDC4", 
+                                "Medicaid" = "#45B7D1",
+                                "Self-Pay" = "#FFA07A")) +
+  labs(title = "Distribusi Pasien Berdasarkan Jenis Asuransi",
+       x = "Jenis Asuransi", 
+       y = "Jumlah Pasien") +
+  theme_minimal()
+```
+
+```{r}
+# Warna bawaan R
+ggplot(data, aes(x = Insurance_Type, fill = Insurance_Type)) +
+  geom_bar() +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Custom Warna - Palette Set2") +
+  theme_minimal()
+```
+
+```{r}
+# Warna gradasi
+avg_by_insurance <- data %>%
+  group_by(Insurance_Type) %>%              # Mengelompokkan data berdasarkan jenis asuransi
+  summarise(avg_amount = mean(Avg_Billing_Amount))  # Menghitung rata-rata biaya tagihan untuk setiap jenis asuransi
+
+
+ggplot(avg_by_insurance, aes(x = Insurance_Type, y = avg_amount, fill = avg_amount)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Custom Warna Gradasi") +
+  theme_minimal()
+```
+
+```{r}
+# Warna Viridis (color blind friendly)
+ggplot(data, aes(x = Insurance_Type, fill = Insurance_Type)) +
+  geom_bar() +
+  scale_fill_viridis_d(option = "D") +  # option: A, B, C, D, E
+  labs(title = "Custom Warna Viridis") +
+  theme_minimal()
+```
+
+```{r}
+# Warna HEX code
+ggplot(data, aes(x = Insurance_Type, fill = Insurance_Type)) +
+  geom_bar() +
+  scale_fill_manual(values = c("#E63946", "#F1FAEE", "#A8DADC", "#457B9D")) +
+  labs(title = "Custom Warna HEX") +
+  theme_minimal()
+```
+
+```{r}
+# Urutan Ascending berdasarkan nilai
+insurance_count <- data %>%
+  count(Insurance_Type) %>%   # Frekuensi tiap jenis asuransi
+  arrange(n)                  # Urut berdasarkan frekuensi
+
+
+ggplot(insurance_count, aes(x = reorder(Insurance_Type, n), y = n, fill = Insurance_Type)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Bar Chart Urutan Ascending Berdasarkan Frekuensi",
+       x = "Insurance Type", y = "Count") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r}
+# Urutan Descending Berdasarkan Nilai (n di reorder minus ya)
+ggplot(insurance_count, aes(x = reorder(Insurance_Type, -n), y = n, fill = Insurance_Type)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Bar Chart Urutan Descending Berdasarkan Frekuensi",
+       x = "Insurance Type", y = "Count") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+`reorder(Insurance_Type, -n)`: urutkan kategori dari besar ke kecil
+
+```{r}
+insurance_count <- data %>%
+  count(Insurance_Type) %>%
+  arrange(n) 
+
+ggplot(insurance_count, aes(x = reorder(Insurance_Type, -n), y = n, fill = Insurance_Type)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = n), vjust = -0.2, size = 2) +
+  scale_fill_manual(values = c("Private" = "#2A9D8F", 
+                                "Medicare" = "#E76F51", 
+                                "Medicaid" = "#F4A261",
+                                "Uninsured" = "#E9C46A")) +
+  labs(title = "Distribusi Pasien Berdasarkan Jenis Asuransi",
+       subtitle = "Diurutkan dari Terbanyak ke Tersedikit",
+       x = "Jenis Asuransi", 
+       y = "Jumlah Pasien") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold", size = 14),
+        axis.text.x = element_text(size = 11))
+```
+
+```{r}
+insurance_pct <- data %>%
+  count(Insurance_Type) %>%              # Menghitung jumlah observasi untuk setiap jenis asuransi
+  mutate(pct = n / sum(n) * 100)          # Menghitung persentase tiap jenis asuransi terhadap total data
+
+
+ggplot(insurance_pct, aes(x = reorder(Insurance_Type, pct), 
+                          y = pct, 
+                          fill = Insurance_Type)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0(round(pct, 1), "%")), 
+            vjust = -0.5) +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "Persentase Pasien Berdasarkan Jenis Asuransi",
+       x = "Jenis Asuransi", 
+       y = "Persentase (%)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r}
+# Horizontal Bar Chart
+
+avg_billing <- data %>%
+  group_by(Primary_Condition) %>%                         # Mengelompokkan data berdasarkan kondisi utama pasien
+  summarise(Avg_Amount = mean(Avg_Billing_Amount, 
+                              na.rm = TRUE)) %>%          # Menghitung rata-rata biaya tagihan per kondisi (mengabaikan NA)
+  arrange(desc(Avg_Amount))                                # Mengurutkan hasil dari rata-rata biaya tertinggi ke terendah
+
+
+ggplot(avg_billing, aes(x = reorder(Primary_Condition, Avg_Amount), 
+                        y = Avg_Amount, 
+                        fill = Avg_Amount)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0("$", round(Avg_Amount, 0))), #tanpa spasi, round 0 = bulatkan
+            hjust = -0.09, size = 2.5) +
+  scale_fill_gradient(low = "#FFE5B4", high = "#FF6347") +
+  coord_flip() +
+  labs(title = "Rata-rata Billing Amount per Kondisi Primer",
+       subtitle = "Diurutkan dari Tertinggi ke Terendah",
+       x = "Kondisi Primer", 
+       y = "Rata-rata Billing Amount ($)",
+       fill = "Amount") +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+```{r}
+# Rotasi Label Axis
+ggplot(data, aes(x = Primary_Condition, fill = Primary_Condition)) +
+  geom_bar() +
+  scale_fill_brewer(palette = "Spectral") +
+  labs(title = "Distribusi Primary Condition") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+```
+
+```{r}
+# Kostumisasi Background
+ggplot(insurance_count, aes(x = reorder(Insurance_Type, n), 
+                            y = n, 
+                            fill = Insurance_Type)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("#264653", "#2A9D8F", "#E9C46A", "#F4A261")) +
+  labs(title = "Custom Theme dan Warna") +
+  theme(
+    panel.background = element_rect(fill = "gray"), # background area plot
+    panel.grid.major = element_line(color = "gray90"), # garis mayor
+    panel.grid.minor = element_blank(),
+    plot.background = element_rect(fill = "gray95"), # background seluruh plot termasuk judul
+    legend.position = "none")
+```
+
+## Stacked Bar Chart
+
+Melihat komposisi / kontribusi bagian terhadap total
+
+```{r}
+ggplot(data, aes(x = Insurance_Type, fill = Gender)) +
+  geom_bar() +
+  labs(title = "Distribusi Gender Berdasarkan Jenis Asuransi",
+       x = "Jenis Asuransi", 
+       y = "Jumlah Pasien",
+       fill = "Gender") +
+  theme_minimal()
+
+# fill: warna isi berdasarkan gender
+```
+
+```{r}
+ggplot(data, aes(x = Insurance_Type, fill = Gender)) +
+  geom_bar(position = "stack") +
+  scale_fill_manual(values = c("Male" = "#3A86FF", 
+                                "Female" = "#FF006E")) +
+  geom_text(stat = 'count', 
+            aes(label = after_stat(count)), 
+            position = position_stack(vjust = 0.5),
+            color = "white", fontface = "bold") +
+  labs(title = "Distribusi Gender Berdasarkan Jenis Asuransi",
+       x = "Jenis Asuransi", 
+       y = "Jumlah Pasien",
+       fill = "Gender") +
+  theme_minimal()
+```
+
+## Grouped Bar Chart
+
+Membandingkan nilai antar kategori secara langsung
+
+```{r}
+df_summary <- data %>%
+  group_by(Insurance_Type, Gender) %>%     # Mengelompokkan data berdasarkan jenis asuransi dan jenis kelamin
+  summarise(count = n(), 
+            .groups = 'drop') %>%          # Menghitung jumlah observasi tiap kombinasi dan menghapus struktur grouping
+  arrange(desc(count))                     # Mengurutkan hasil berdasarkan jumlah terbanyak ke tersedikit
+
+
+ggplot(df_summary, aes(x = reorder(Insurance_Type, -count), 
+                       y = count, 
+                       fill = Gender)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("Male" = "#06A77D", 
+                                "Female" = "#D90368")) +
+  geom_text(aes(label = count), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.5, size = 3.5) +
+  labs(title = "Perbandingan Gender per Jenis Asuransi",
+       x = "Jenis Asuransi", 
+       y = "Jumlah Pasien",
+       fill = "Gender") +
+  theme_minimal()
+```
+
+## Lollipop Chart
+
+```{r}
+avg_billing <- data %>%
+  group_by(Primary_Condition) %>%                         # Mengelompokkan data berdasarkan kondisi utama (Primary_Condition)
+  summarise(Avg_Amount = mean(Avg_Billing_Amount, 
+                              na.rm = TRUE)) %>%          # Menghitung rata-rata biaya tagihan dengan mengabaikan nilai NA
+  arrange(desc(Avg_Amount))                                # Mengurutkan hasil dari rata-rata biaya tertinggi ke terendah
+
+
+# buat garis pakai geom segment
+ggplot(avg_billing, aes(x = reorder(Primary_Condition, Avg_Amount), y = Avg_Amount)) +
+  geom_segment(aes(x = reorder(Primary_Condition, Avg_Amount), 
+                   xend = reorder(Primary_Condition, Avg_Amount), 
+                   y = 0, yend = Avg_Amount), 
+               color = "skyblue", size = 1) +
+  geom_point(color = "blue", size = 4) +
+  coord_flip() +
+  labs(title = "Rata-rata Billing Amount per Kondisi Primer",
+       x = "Kondisi Primer", 
+       y = "Rata-rata Billing Amount ($)") +
+  theme_minimal()
+```
+
+# Visualisasi Sebaran Data
+
+## Histogram
+
+```{r}
+ggplot(data, aes(x = Age)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "black", alpha = 0.7) +
+  labs(title = "Distribusi Umur Pasien",
+       x = "Umur (tahun)", 
+       y = "Frekuensi") +
+  theme_minimal()
+```
+
+alpha = 0.3  # Lebih transparan
+alpha = 0.7  
+alpha = 1    # Tidak transparan
+
+```{r}
+ggplot(data, aes(x = Age)) +
+  geom_histogram(aes(y = after_stat(density)),  # Ubah ke density
+                 binwidth = 5, 
+                 fill = "steelblue", 
+                 color = "black", 
+                 alpha = 0.7) +
+  geom_density(color = "red",                   # Tambah density line
+               size = 1.2) +
+  labs(title = "Distribusi Umur Pasien",
+       subtitle = "Histogram dengan Kurva Density",
+       x = "Umur (tahun)", 
+       y = "Density") +
+  theme_minimal()
+```
+
+## Density Plot
+
+```{r}
+ggplot(data, aes(x = BMI)) +
+  geom_density(fill = "coral", alpha = 0.6) +
+  labs(title = "Distribusi BMI Pasien",
+       x = "BMI", 
+       y = "Density") +
+  theme_minimal()
+```
+
+## Boxplot
+
+```{r}
+ggplot(data, aes(y = Avg_Billing_Amount)) +
+  geom_boxplot(fill = "lightgreen", alpha = 0.5) +
+  labs(title = "Distribusi Rata-rata Billing Amount",
+       y = "Avg Billing Amount ($)") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+```
+
+## Violin Plot
+
+```{r}
+ggplot(data, aes(x = "", y = Age)) +
+  geom_violin(fill = "purple", alpha = 0.5) +
+  geom_boxplot(width = 0.1, fill = "white", alpha = 0.7) +
+  labs(title = "Distribusi Umur Pasien (Violin Plot)",
+       x = "", 
+       y = "Umur (tahun)") +
+  theme_minimal()
+```
+
+## QQ-Plot (Normalisasi Distribusi BMI)
+
+```{r}
+ggplot(data, aes(sample = BMI)) +
+  stat_qq() +
+  stat_qq_line(color = "red") +
+  labs(title = "QQ-Plot Distribusi BMI",
+       x = "Theoretical Quantiles", 
+       y = "Sample Quantiles") +
+  theme_minimal()
+```
+
+# Visualisasi Perbandingan Sebaran Data
+
+## Multiple Density Plot
+
+BMI berdasarkan gender:
+
+```{r}
+ggplot(data, aes(x = BMI, y = Gender, fill = Gender)) +
+  geom_density_ridges(alpha = 0.6) +
+  labs(title = "Perbandingan Distribusi BMI Berdasarkan Gender",
+       x = "BMI", 
+       y = "Gender") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Alternatif Multiple Density Plot dengan overlay
+
+```{r}
+ggplot(data, aes(x = BMI, fill = Gender, color = Gender)) +
+  geom_density(alpha = 0.4) +
+  labs(title = "Perbandingan Distribusi BMI Berdasarkan Gender",
+       x = "BMI", 
+       y = "Density") +
+  theme_minimal()
+```
+
+## Multiple Boxplot
+
+Avg Billing Amount Berdasarkan Insurance Type:
+
+```{r}
+ggplot(data, aes(x = Insurance_Type, y = Avg_Billing_Amount, fill = Insurance_Type)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Perbandingan Avg Billing Amount Berdasarkan Jenis Asuransi",
+       x = "Jenis Asuransi", 
+       y = "Avg Billing Amount ($)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Multiple Violin Plot
+
+Umur Berdasarkan Primary Condition:
+
+```{r}
+ggplot(data, aes(x = Primary_Condition, y = Age, fill = Primary_Condition)) +
+  geom_violin(alpha = 0.6) +
+  geom_boxplot(width = 0.1, fill = "white", alpha = 0.5) +
+  labs(title = "Perbandingan Distribusi Umur Berdasarkan Kondisi Primer",
+       x = "Kondisi Primer", 
+       y = "Umur (tahun)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+```
+
+# Visualisasi Tambahan
+
+## Word Cloud
+
+```{r}
+#install.packages("wordcloud")    # Library utama untuk word cloud
+#install.packages("wordcloud2")   # Library untuk word cloud interaktif
+#install.packages("RColorBrewer") # Library untuk color palette
+#install.packages("tm")           # Library untuk text mining
+
+```
+
+```{r}
+library(wordcloud)      # Aktifkan library wordcloud
+library(wordcloud2)     # Aktifkan library wordcloud2
+library(RColorBrewer)   # Aktifkan library warna
+library(tm)             # Aktifkan library text mining
+library(dplyr)          # Aktifkan library manipulasi data
+```
+
+```{r}
+condition_freq <- data %>%                    
+  count(Primary_Condition) %>%              #Hitung jumlah setiap kondisi
+  arrange(desc(n))
+
+wordcloud(
+  words = condition_freq$Primary_Condition,  # Kata yang ditampilkan (kolom Primary_Condition)
+  freq = condition_freq$n,                   # Frekuensi/ukuran kata (kolom n)
+  min.freq = 1,                              # Tampilkan kata dengan frekuensi minimum 1
+  max.words = 200,                           # Maksimal 200 kata yang ditampilkan
+  random.order = FALSE,                      # FALSE = kata frekuensi tinggi di tengah, TRUE = acak
+  rot.per = 0.35,                           # 35% kata akan dirotasi 90 derajat (vertikal)
+  colors = brewer.pal(8, "Dark2")           
+)
+```
+
+```{r}
+data %>% filter(!is.na(Primary_Condition))
+```
+
+```{r}
+#install.packages("ggwordcloud")
+library(ggwordcloud)
+
+condition_freq <- data %>%
+  count(Primary_Condition) %>%
+  arrange(desc(n))
+
+# State
+state_freq <- data %>% count(State)
+wordcloud(state_freq$State, state_freq$n,
+          colors = brewer.pal(8, "Spectral"),
+          main = "State")
+
+
+
+```
+
+## Map Chart
+
+```{r}
+#install.packages("mapdata")
+library(ggplot2)
+library(dplyr)
+library(maps)
+library(viridis)
+library(scales)
+library(mapdata)
+```
+
+```{r}
+# 'region' pada data peta berisi NAMA LENGKAP negara bagian
+# dalam huruf kecil (misal: "california", "new york")
+# Kolom ini akan menjadi kunci utama saat menggabungkan data
+
+# Get US state map data
+us_states <- map_data("state")
+
+state_abbrev <- data.frame(
+  # Singkatan negara bagian (sama seperti di data pasien)
+  abbreviation = state.abb,
+  
+  # Nama lengkap negara bagian (lowercase)
+  # Harus lowercase agar cocok dengan kolom 'region' di peta
+  region = tolower(state.name),
+  stringsAsFactors = FALSE)
+
+# Hitung jumlah pasien per state
+patient_count <- data %>%
+  group_by(State) %>%
+  summarise(
+    count = n(),
+    avg_age = mean(Age, na.rm = TRUE),
+    avg_bmi = mean(BMI, na.rm = TRUE),
+    avg_visits = mean(Annual_Visits, na.rm = TRUE),
+    avg_billing = mean(Avg_Billing_Amount, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  rename(abbreviation = State) %>%
+  left_join(state_abbrev, by = "abbreviation")
+
+# Merge dengan map data
+map_data_merged <- us_states %>%
+  left_join(patient_count, by = "region")
+```
+
+```{r}
+# Rata-rata BMI
+
+plot2 <- ggplot(map_data_merged, aes(x = long, y = lat, group = group)) +
+  geom_polygon(
+    aes(fill = avg_bmi),
+    color = "white",
+    linewidth = 0.3
+  ) +
+  scale_fill_gradient(
+    low = "#FFFFCC",
+    high = "#800026",
+    name = "Rata-rata BMI",
+    na.value = "lightgray"
+  ) +
+  coord_map("albers", lat0 = 39, lat1 = 47) +
+  labs(
+    title = "Rata-rata BMI Pasien per Negara Bagian",
+    subtitle = "BMI tinggi menunjukkan risiko kesehatan lebih besar",
+    caption = "Sumber: Dataset Pasien"
+  ) +
+  theme_void() +
+  theme(
+    title = element_text(size = 14, face = "bold", hjust = 0.5),
+    subtitle = element_text(size = 10, color = "gray50", hjust = 0.5),
+    caption = element_text(size = 8, color = "gray60", hjust = 0.5),
+    legend.position = "right",
+    legend.title = element_text(size = 10, face = "bold"),
+    plot.margin = margin(20, 20, 20, 20)
+  )
+
+print(plot2)
+```
+
+```{r}
+plot4 <- ggplot(map_data_merged, aes(x = long, y = lat, group = group)) +
+  geom_polygon(
+    aes(fill = avg_billing),
+    color = "white",
+    linewidth = 0.3
+  ) +
+  scale_fill_gradient(
+    low = "#FEF0D7",
+    high = "#990000",
+    name = "Biaya Tagihan ($)",
+    na.value = "lightgray",
+    labels = dollar
+  ) +
+  coord_map("albers", lat0 = 39, lat1 = 47) +
+  labs(
+    title = "Rata-rata Biaya Tagihan per Negara Bagian",
+    subtitle = "Variasi biaya menunjukkan perbedaan struktur layanan",
+    caption = "Sumber: Dataset Pasien"
+  ) +
+  theme_void() +
+  theme(
+    title = element_text(size = 14, face = "bold", hjust = 0.5),
+    subtitle = element_text(size = 10, color = "gray50", hjust = 0.5),
+    caption = element_text(size = 8, color = "gray60", hjust = 0.5),
+    legend.position = "right",
+    legend.title = element_text(size = 10, face = "bold"),
+    plot.margin = margin(20, 20, 20, 20)
+  )
+
+print(plot4)
+```
+
+### Contoh untuk wilayah Indonesia 
+
+```{r}
+
+# Install packages if needed
+#install.packages(c("ggplot2", "dplyr", "sf", "scales", "viridis"))
+
+library(ggplot2)
+library(dplyr)
+library(sf)
+library(scales)
+library(viridis)
+
+# Read shapefile dari laptop (Level 2: Kabupaten/Kota, Level 1 provinsi)
+shp_path <- "C:/gadm41_IDN_shp/gadm41_IDN_1.shp"
+indonesia_map <- st_read(shp_path)
+
+# Check nama kolom
+print("Kolom yang tersedia:")
+print(names(indonesia_map))
+
+# Check beberapa nama provinsi
+print("\nContoh nama provinsi:")
+print(head(indonesia_map$NAME_1))
+
+# Data provinsi - sesuaikan dengan nama di shapefile
+provinsi_data <- data.frame(
+  NAME_1 = c(
+    "Aceh", "Sumatera Utara", "Sumatera Barat", "Riau", "Jambi",
+    "Sumatera Selatan", "Bengkulu", "Lampung", "Kepulauan Riau",
+    "Jakarta Raya", "Jawa Barat", "Jawa Tengah", "Yogyakarta", "Jawa Timur", "Banten",
+    "Bali", "Nusa Tenggara Barat", "Nusa Tenggara Timur",
+    "Kalimantan Barat", "Kalimantan Tengah", "Kalimantan Selatan", "Kalimantan Timur", "Kalimantan Utara",
+    "Sulawesi Utara", "Sulawesi Tengah", "Sulawesi Selatan", "Sulawesi Tenggara", "Gorontalo", "Sulawesi Barat",
+    "Maluku", "Maluku Utara",
+    "Papua Barat", "Papua", "Papua Selatan"
+  ),
+  Jumlah_Pasien = c(
+    1200, 3500, 2100, 1800, 950,
+    2400, 600, 1900, 500,
+    8500, 6200, 5800, 1100, 5500, 2800,
+    1500, 800, 950,
+    1400, 700, 1100, 1600, 300,
+    750, 850, 2200, 650, 200, 450,
+    500, 350,
+    280, 420, 180
+  ),
+  Avg_Age = c(
+    48, 52, 45, 47, 44,
+    49, 42, 46, 41,
+    51, 50, 48, 44, 49, 47,
+    46, 43, 41,
+    45, 40, 44, 47, 39,
+    43, 41, 48, 42, 38, 40,
+    44, 41,
+    37, 39, 36
+  ),
+  Avg_BMI = c(
+    26.2, 27.8, 25.9, 26.5, 24.8,
+    28.1, 24.5, 26.8, 25.2,
+    29.5, 28.8, 27.2, 26.1, 27.9, 28.3,
+    27.5, 25.8, 24.2,
+    26.0, 24.9, 26.4, 27.1, 24.0,
+    25.5, 24.3, 27.6, 25.2, 23.8, 24.7,
+    25.9, 24.6,
+    23.5, 24.1, 22.8
+  ),
+  Avg_Visits = c(
+    4.2, 5.8, 3.9, 4.5, 3.2,
+    5.1, 3.0, 4.8, 2.8,
+    7.2, 6.5, 5.5, 4.1, 5.9, 5.2,
+    4.8, 3.5, 3.1,
+    3.8, 2.9, 3.6, 4.2, 2.5,
+    3.3, 2.8, 5.0, 3.1, 2.2, 2.7,
+    3.4, 2.9,
+    2.1, 2.6, 1.8
+  ),
+  Avg_Billing = c(
+    3.2, 4.5, 2.8, 3.5, 2.2,
+    3.8, 1.9, 3.1, 2.5,
+    6.8, 5.5, 4.2, 3.0, 4.8, 4.1,
+    3.6, 2.4, 2.1,
+    2.9, 2.0, 2.6, 3.3, 1.8,
+    2.3, 2.0, 3.9, 2.2, 1.5, 1.9,
+    2.5, 2.1,
+    1.6, 1.9, 1.2
+  ),
+  stringsAsFactors = FALSE
+)
+
+# Aggregate shapefile by province (NAME_1): jika menggunakan shp level 2 untuk kabupaten
+#indonesia_provinces <- indonesia_map %>%
+ # group_by(NAME_1) %>%
+  #summarise(geometry = st_union(geometry))
+
+# Merge data dengan shapefile
+map_data <- indonesia_map %>%
+  left_join(provinsi_data, by = "NAME_1")
+
+# Function untuk buat choropleth map
+make_choropleth_map <- function(data, fill_var, title, subtitle, 
+                                color_palette = "viridis", legend_name, 
+                                label_fn = NULL, direction = 1) {
+  
+  p <- ggplot(data) +
+    geom_sf(aes(fill = !!sym(fill_var)), color = "white", linewidth = 0.3) +
+    
+    scale_fill_viridis_c(
+      option = color_palette,
+      name = legend_name,
+      labels = if (!is.null(label_fn)) label_fn else waiver(),
+      direction = direction,
+      na.value = "grey90"
+    ) +
+    
+    labs(
+      title = title,
+      subtitle = subtitle,
+      caption = "Sumber: Data Buatan"
+    ) +
+    
+    theme_void() +
+    theme(
+      plot.title = element_text(size = 16, face = "bold", hjust = 0.5, margin = margin(b = 5)),
+      plot.subtitle = element_text(size = 12, color = "gray30", hjust = 0.5, margin = margin(b = 15)),
+      plot.caption = element_text(size = 9, color = "gray50", hjust = 0.5, margin = margin(t = 10)),
+      legend.position = "right",
+      legend.title = element_text(size = 11, face = "bold"),
+      legend.text = element_text(size = 10),
+      plot.background = element_rect(fill = "white", color = NA),
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.margin = margin(20, 20, 20, 20)
+    )
+  
+  return(p)
+}
+
+# Plot 1: Jumlah Pasien
+plot1 <- make_choropleth_map(
+  data = map_data,
+  fill_var = "Jumlah_Pasien",
+  title = "Distribusi Jumlah Pasien per Provinsi",
+  subtitle = "",
+  color_palette = "rocket",
+  legend_name = "Jumlah Pasien",
+  label_fn = comma,
+  direction = -1
+)
+
+print(plot1)
+ggsave("choropleth_jumlah_pasien.png", plot1, width = 12, height = 8, dpi = 300, bg = "white")
+
+# Plot 2: Rata-rata Usia
+plot2 <- make_choropleth_map(
+  data = map_data,
+  fill_var = "Avg_Age",
+  title = "Distribusi Rata-rata Usia Pasien per Provinsi",
+  subtitle = "",
+  color_palette = "plasma",
+  legend_name = "Rata-rata Usia",
+  direction = -1
+)
+
+print(plot2)
+ggsave("choropleth_avg_age.png", plot2, width = 12, height = 8, dpi = 300, bg = "white")
+
+# Plot 3: Rata-rata BMI
+plot3 <- make_choropleth_map(
+  data = map_data,
+  fill_var = "Avg_BMI",
+  title = "Distribusi Rata-rata BMI Pasien per Provinsi",
+  subtitle = "",
+  color_palette = "inferno",
+  legend_name = "Rata-rata BMI",
+  direction = -1
+)
+
+print(plot3)
+ggsave("choropleth_avg_bmi.png", plot3, width = 12, height = 8, dpi = 300, bg = "white")
+
+# Plot 4: Rata-rata Kunjungan
+plot4 <- make_choropleth_map(
+  data = map_data,
+  fill_var = "Avg_Visits",
+  title = "Distribusi Rata-rata Kunjungan per Tahun",
+  subtitle = "",
+  color_palette = "viridis",
+  legend_name = "Kunjungan per Tahun",
+  direction = -1
+)
+
+print(plot4)
+ggsave("choropleth_avg_visits.png", plot4, width = 12, height = 8, dpi = 300, bg = "white")
+
+# Plot 5: Rata-rata Biaya
+plot5 <- make_choropleth_map(
+  data = map_data,
+  fill_var = "Avg_Billing",
+  title = "Distribusi Rata-rata Biaya Perawatan per Provinsi",
+  subtitle = "",
+  color_palette = "mako",
+  legend_name = "Biaya (Juta IDR)",
+  direction = -1
+)
+
+print(plot5)
+ggsave("choropleth_avg_billing.png", plot5, width = 12, height = 8, dpi = 300, bg = "white")
+
+```
+
+
+
+# Tugas
+
+1. Buat 2 plot untuk visualisasi nilai data, 2 plot untuk visualisasi sebaran data, dan 2 plot visualisasi perbandingan sebaran data beserta *interpretasinya*. Bebas pilih data dan plot apa saja.
+
+2. Opsional: bisa buat visualisasi tambahan juga seperti word cloud dan map chart untuk nilai tambahan.
+
+3. Tugas dikumpulkan paling lambat Selasa jam 23.59 di link:  https://ipb.link/tugas-pertemuan2-prak-visdat dalam format .html atau .pdf (Format file: NIM_Nama_Tugas Pertemuan 2)
+
