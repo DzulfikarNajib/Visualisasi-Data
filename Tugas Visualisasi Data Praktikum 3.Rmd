@@ -1,0 +1,367 @@
+---
+title: "Tugas Visualisasi Data Pertemuan 3"
+author: "Dzulfikar Najib_M0401241043"
+date: "2026-02-17"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+    theme: cosmo
+---
+# **INFORMASI UMUM**
+- **Nama**: Dzulfikar Najib
+- **NIM**: M0401241043
+- **Kelas**: M0401 - Visualisasi Data
+- **Judul Tugas**: Tugas Visualisasi Data Pertemuan 3
+- **Dataset yang Digunakan**: **Data1**=Test.csv (untuk visualisasi proporsi dan visualisasi hubungan antar peubah numerik), **Data2**=SampleSuperStore.csv (untuk visualisasi hubungan antar peubah numerik), dan **Data3**=Sample - Superstore.csv (untuk visualisasi deret waktu)
+- **Sumber Dataset**: Kaggle 
+- (Data1:https://www.kaggle.com/datasets/kaushiksuresh147/customer-segmentation)
+- (Data2:https://www.kaggle.com/datasets/itssuru/super-store)
+- (Data3: https://www.kaggle.com/datasets/vivek468/superstore-dataset-final)
+
+# **Visualisasi Proporsi**
+## **Persiapan Data (Test)**
+```{r}
+library(ggplot2)
+library(dplyr)
+library(treemap)
+library(ggrepel)
+library(corrplot)
+library(networkD3)
+library(viridis)
+library(shadowtext)
+library(lubridate)
+library(scales)
+
+path1 <- "C:/Users/Hype AMD/OneDrive - apps.ipb.ac.id/A UP MY HARD SKILL/IPB/Matakuliaih/Semester 4/Visualisasi Data/Pertemuan 3/Test.csv"
+data1 <- read.csv(path1, sep=",") # Pakai path1, bukan path
+
+
+path2 <- "C:/Users/Hype AMD/OneDrive - apps.ipb.ac.id/A UP MY HARD SKILL/IPB/Matakuliaih/Semester 4/Visualisasi Data/Pertemuan 3/SampleSuperStore.csv"
+data2 <- read.csv(path2, sep=",")
+
+path3 <- "C:/Users/Hype AMD/OneDrive - apps.ipb.ac.id/A UP MY HARD SKILL/IPB/Matakuliaih/Semester 4/Visualisasi Data/Pertemuan 3/Sample - Superstore.csv"
+data3 <- read.csv(path3, sep=",", check.names = FALSE)
+```
+## **NASTED DONUT CHART (Profession berdasarkan segmentation)**
+```{r}
+data1 <- as.data.frame(data1)
+
+inner_data <- data1 %>%
+  group_by(Segmentation) %>%
+  summarise(count = n()) %>%
+  mutate(
+    fraction = count / sum(count),
+    ymax = cumsum(fraction),
+    ymin = c(0, head(ymax, n=-1)),
+    labelPosition = (ymax + ymin) / 2,
+    label = paste0("Seg: ", Segmentation, "\n", count, " (", round(fraction*100, 1), "%)")
+  )
+
+outer_data <- data1 %>%
+  group_by(Profession) %>%
+  summarise(count = n()) %>%
+  mutate(
+    fraction = count / sum(count),
+    ymax = cumsum(fraction),
+    ymin = c(0, head(ymax, n=-1)),
+    labelPosition = (ymax + ymin) / 2,
+    label = paste0(Profession, "\n", round(fraction*100, 1), "%")
+  )
+
+p <- ggplot() +
+  
+  # Cincin Dalam: Segmentation (Radius 2 ke 3)
+  geom_rect(data = inner_data, 
+            aes(ymax=ymax, ymin=ymin, xmax=3, xmin=2, fill=Segmentation), 
+            color="white", size=0.5) +
+  
+  # Cincin Luar: Profession (Radius 3.1 ke 4)
+  geom_rect(data = outer_data, 
+            aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3.1, fill=Profession), 
+            color="white", size=0.5) +
+
+# Label Cincin Dalam:
+geom_shadowtext(data = inner_data, 
+                aes(x=2.5, y=labelPosition, label=label), 
+                color="black",           # Warna huruf utama
+                bg.color="white",        # Warna garis tepi (outline)
+                bg.r=0.15,               # Ketebalan garis tepi
+                size=2.5, 
+                fontface="bold") +
+  
+  # Label Cincin Luar (Hanya persentase yang cukup besar)
+  geom_shadowtext(data = outer_data %>% filter(fraction > 0.05), 
+                aes(x = 3.75,           
+                    y = labelPosition, 
+                    label = label), 
+                color = "black",        # Teks hitam
+                bg.color = "white",     # Outline putih
+                bg.r = 0.12,            # Ketebalan outline sedikit lebih tipis dari label dalam
+                size = 3, 
+                fontface = "italic") +
+  
+  coord_polar(theta="y") +
+  xlim(c(0, 4)) +
+  
+  scale_fill_viridis_d(option = "mako") + 
+  
+  theme_void() +
+  theme(
+    legend.position = "right",
+    legend.title = element_text(face="bold", size=10),
+    plot.title = element_text(hjust=0.5, face="bold", size=16, margin=margin(b=10)),
+    plot.subtitle = element_text(hjust=0.5, size=11, color="gray40", margin=margin(b=10))
+  ) +
+  labs(
+    title = "Customer Segmentation & Profession Analysis",
+    subtitle = "Inner: Segmentation | Outer: Profession Distribution (Dataset: Test.csv)",
+    fill = "Category"
+  )
+
+print(p)
+```
+
+- Donut chart ini menunjukkan distribusi Segmentation (cincin dalam) dan distribusi Profession (cincin luar) dalam dataset. 
+- Setiap segmen pada cincin dalam mewakili proporsi masing-masing Segmentation, sedangkan setiap segmen pada cincin luar mewakili proporsi masing-masing Profession.
+
+#### **Berdasarkan visualisasi nested donut chart untuk Segmentation dan Profession, kita dapat menginterpretasikan beberapa pola dan insight sebagai berikut:**
+1. Dominasi Segmen A dan Profesi Artist
+* Segmen A merupakan kelompok terbesar dengan kontribusi 32.2% (846 orang) dari total populasi. 
+* Menariknya, di lapisan luar, profesi Artist mendominasi dengan proporsi 30.5%. Ini menunjukkan adanya korelasi kuat di mana mayoritas pelanggan Anda di Segmen A kemungkinan besar berlatar belakang seniman atau bekerja di bidang kreatif.
+2. Distribusi Segmen B, C, dan D
+* Segmen D (28.9%) adalah kelompok terbesar kedua. Di segmen ini, terlihat sebaran profesi yang cukup beragam, namun profesi Lawyer (8.4%) dan Healthcare (15.9%) tampak memiliki porsi yang signifikan di area sisi kiri grafik.
+* Segmen B (20.9%) dan Segmen C (18%) memiliki ukuran yang hampir mirip. Pada Segmen B, profesi Doctor (9.2%) dan Engineer (9%) menjadi kontributor utama.
+3. Profesi dengan Kontribusi Terkecil (Niche)
+* Profesi seperti Executive (6.7%), Entertainment (11.5%), dan profesi kecil lainnya (Marketing & Homemaker) tersebar di berbagai segmen.
+* Marketing dan Homemaker memiliki jumlah yang sangat sedikit sehingga segmennya hampir tidak terlihat secara visual jika tidak diperbesar. Ini menunjukkan bahwa strategi pemasaran saat ini mungkin belum menyentuh kelompok profesi ini secara maksimal.
+
+*Kesimpulan: Visualisasi ini memberikan gambaran yang jelas tentang bagaimana segmen pelanggan Anda terbagi berdasarkan profesi. Segmen A dengan dominasi Artist menunjukkan peluang besar untuk kampanye pemasaran yang ditargetkan pada industri kreatif, sementara Segmen D dengan distribusi profesi yang lebih beragam menunjukkan potensi untuk pendekatan pemasaran yang lebih luas. Profesi dengan kontribusi kecil bisa menjadi area fokus untuk pengembangan produk atau layanan baru guna menarik segmen pasar yang belum tergarap.*
+
+## **TREAMAP (Profession & Segmentation)**
+```{r}
+df_tree <- data1 %>% 
+  filter(!is.na(Segmentation), !is.na(Profession)) %>% 
+  group_by(Segmentation, Profession) %>% 
+  summarise(n = n(), .groups = 'drop') %>%
+  filter(n > 0) # Untuk memastikan hanya segmen dan profesi dengan jumlah > 0 yang ditampilkan
+
+treemap(df_tree,
+        index=c("Segmentation", "Profession"),
+        vSize="n",
+        type="index",
+        title="Sebaran Profesi per Segment (Dataset: Test.csv)",
+        palette="Set3",        # Ganti ke "Set3" atau "Pastel1" yang lebih stabil
+        border.col="white",
+        fontsize.labels=c(15, 10),
+        fontcolor.labels="black")
+```
+
+#### **Berdasarkan visualisasi treemap pada Segmen A, B, C, dan D:**
+- Dominasi Profesi Artist: Profesi 'Artist' merupakan kelompok dengan jumlah anggota terbanyak (paling dominan) di seluruh segmen, terutama sangat menonjol pada Segmen A.
+- Karakteristik Segmen D: Berbeda dengan segmen lain, Segmen D menunjukkan proporsi profesi 'Healthcare' yang sangat besar, bersaing ketat dengan jumlah 'Artist'.
+- Diversitas Segmen B: Segmen B memiliki distribusi profesi yang paling beragam dan merata jika dibandingkan dengan segmen lainnya.
+- Profesi Minoritas: Profesi seperti 'Homemaker' dan 'Marketing' secara konsisten memiliki jumlah anggota paling sedikit (ukuran kotak terkecil) di setiap segmen.
+
+*Kesimpulan: Setiap segmen memiliki karakteristik profesi yang berbeda, dengan 'Artist' sebagai profesi dominan di semua segmen, namun Segmen D menunjukkan keunikan dengan proporsi besar untuk 'Healthcare', sementara Segmen B menonjol dengan keragaman profesi yang lebih merata dibandingkan segmen lainnya.*
+
+## **SANKY DIAGRAM (Gender, Spending_Score, Segmentation)**
+```{r}
+df_sankey <- data1 %>% 
+  select(Gender, Spending_Score, Segmentation) %>% 
+  na.omit() # Untuk memastikan tidak ada nilai NA yang mengganggu visualisasi
+
+nodes1 <- df_sankey %>% 
+  group_by(Gender, Spending_Score) %>% # Mengelompokkan data berdasarkan Gender dan Spending_Score
+  summarise(value=n(), .groups = 'drop') %>% 
+  rename(source=Gender, target=Spending_Score)
+
+nodes2 <- df_sankey %>% 
+  group_by(Spending_Score, Segmentation) %>% 
+  summarise(value=n(), .groups = 'drop') %>% 
+  rename(source=Spending_Score, target=Segmentation)
+
+links <- rbind(as.data.frame(nodes1), as.data.frame(nodes2))
+
+nodes_name <- data.frame(name=unique(c(links$source, links$target)))
+links$IDsource <- match(links$source, nodes_name$name) - 1
+links$IDtarget <- match(links$target, nodes_name$name) - 1
+
+sankeyNetwork(Links = links, Nodes = nodes_name,
+              Source = "IDsource", Target = "IDtarget",
+              Value = "value", NodeID = "name", 
+              fontSize = 14, nodeWidth = 40)
+
+```
+- Sisi Kiri (Gender): Menunjukkan Gender di mana Female adalah blok biru tua (atas) dan Male adalah blok biru muda (bawah).
+- Sisi Tengah (Spending Score): Menunjukkan tingkat pengeluaran yaitu Low (hijau), Average (oranye tua), dan High (oranye muda).
+- Sisi Kanan (Segmentation): Menunjukkan segmentasi konsumen yaitu A (hijau muda), B (merah), C (pink/salem), dan D (ungu).
+- Lebar Aliran: Menunjukkan jumlah populasi/sampel (semakin tebal alirannya, semakin banyak jumlahnya).
+- Warna Aliran: Aliran berwarna abu-abu transparan yang menghubungkan antar kategori untuk memudahkan pelacakan distribusi data.
+
+#### **Dari diagram Sankey yang menghubungkan Gender, Spending_Score, dan Segmentation, kita dapat menginterpretasikan beberapa pola dan hubungan sebagai berikut:**
+##### Aliran Gender ke Spending Score:
+  - Kelompok 'Female' memiliki proporsi aliran yang besar menuju 'Low' spending score, namun juga berkontribusi signifikan pada kategori 'Average'.
+  - Kelompok 'Male' terlihat memiliki distribusi yang cukup merata, namun aliran menuju 'Average' dan 'Low' tetap yang paling dominan.
+  - Kategori 'High' spending score menerima aliran yang paling tipis dari kedua gender dibandingkan kategori lainnya.
+
+##### Aliran Spending Score ke Segmentation:
+  - Kelompok 'Low' Spending Score: Mengalir paling besar ke Segmen D (ungu) dan Segmen A (hijau). Ini menunjukkan Segmen D dan A didominasi oleh orang-orang dengan pengeluaran rendah.
+  - Kelompok 'Average' Spending Score: Mayoritas mengalir ke Segmen B (merah) dan Segmen C (pink). Artinya, Segmen B dan C adalah target konsumen dengan pengeluaran menengah.
+  - Kelompok 'High' Spending Score: Alirannya tersebar cukup kecil ke semua segmen, namun terlihat cukup konsisten masuk ke Segmen C dan B.
+
+*Kesimpulan: Terdapat pola yang jelas di mana tingkat pengeluaran (Spending Score) menjadi penentu utama dalam pembagian segmen. Segmen A dan D adalah kelompok pengeluaran rendah, sedangkan Segmen B dan C adalah kelompok pengeluaran menengah hingga tinggi.*
+
+# **Visualisasi Hubungan Antar Peubah Numerik**
+## **Heatmap Korelasi**
+```{r}
+df_numeric <- data1 %>% 
+  select(Age, Work_Experience, Family_Size) %>% 
+  na.omit()
+
+res <- cor(df_numeric)
+
+# Membuat visualisasi
+corrplot(res, 
+         method="color", 
+         type="upper", 
+         addCoef.col = "black",
+         tl.srt=45,
+         tl.col="black", 
+         title="Korelasi: Umur, Pengalaman Kerja, & Ukuran Keluarga",
+         number.cex=0.9,
+         mar=c(0,0,3,0), # Margin atas (3) perlu ada untuk tempat judul
+         col=viridis(100))
+
+# Menambahkan Subtitle
+mtext("Dataset: Test.csv", side=3, line=0.5, cex=0.9, adj=0.45, col="gray40")
+```
+- Heatmap korelasi menunjukkan hubungan antara variabel numerik Age, Work_Experience, dan Family_Size.
+- Warna menunjukkan kekuatan dan arah korelasi, dengan angka di dalam kotak menunjukkan nilai korelasi secara spesifik.
+
+#### **Berdasarkan hasil heatmap korelasi di atas, kita bisa menginterpretasikan hubungan antara variabel-variabel numerik sebagai berikut:**
+- Age & Work_Experience (-0.19): Terdapat korelasi negatif yang lemah. Dari korelasi menunjukkan bahwa dalam dataset ini, bertambahnya usia tidak menjamin pengalaman kerja yang lebih tinggi; ada tren kecil yang justru menunjukkan sebaliknya.
+- Age & Family_Size (-0.28): Terdapat korelasi negatif lemah. Responden yang berusia lebih tua cenderung memiliki ukuran keluarga yang lebih kecil dalam sampel data ini.
+- Work_Experience & Family_Size (-0.07): Angka ini mendekati nol, yang berarti hampir tidak ada hubungan linier antara pengalaman kerja seseorang dengan jumlah anggota keluarganya.
+
+*Kesimpulan: Secara keseluruhan, ketiga variabel ini tidak menunjukkan korelasi yang kuat satu sama lain, yang mengindikasikan bahwa faktor-faktor seperti usia, pengalaman kerja, dan ukuran keluarga mungkin dipengaruhi oleh variabel lain yang tidak termasuk dalam analisis ini atau memiliki hubungan yang lebih kompleks daripada sekadar linier.*
+
+## **Scatter Plot: Sales vs Profit (basic)**
+```{r}
+ggplot(data2, aes(x = Sales, y = Profit)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  # Menambahkan garis regresi linear untuk menunjukkan tren umum antara Sales dan Profit
+  geom_smooth(method = "lm", formula = y ~ x, se = TRUE, color = "red") + 
+  labs(title = "Hubungan Antara Penjualan (Sales) dan Keuntungan (Profit)",
+       subtitle = "Dataset: Sample Superstore", 
+       x = "Penjualan (USD)", 
+       y = "Keuntungan/Profit (USD)") +
+  theme_minimal()
+```
+
+## **Scatter Plot: Sales vs Profit (dengan outliers)**
+```{r}
+data2$label_outlier <- ifelse(data2$Sales > 5000 | abs(data2$Profit) > 2000, 
+                             as.character(data2$Product_Name), NA)
+
+ggplot(data2, aes(x = Sales, y = Profit)) +
+  geom_point(aes(color = abs(Profit) > 2000), alpha = 0.5) +
+  geom_smooth(method = "lm", formula = y ~ x, se = TRUE, color = "red") + 
+  
+  # na.rm = TRUE buat ngilangin pesan error/warning
+  geom_text_repel(aes(label = label_outlier), 
+                  size = 3, 
+                  na.rm = TRUE, 
+                  box.padding = 0.5) + 
+                  
+  scale_color_manual(values = c("steelblue", "orange")) +
+  labs(title = "Hubungan Antara Penjualan (Sales) dan Keuntungan (Profit) dengan Outliers",
+       subtitle = "Dataset: Sample Superstore",
+       x = "Penjualan (USD)", y = "Profit (USD)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+- Scatter plot menunjukkan hubungan antara Sales (sumbu X) dan Profit (sumbu Y).
+- Titik-titik biru menunjukkan data individual, sementara garis merah menunjukkan tren umum (regresi linear) antara kedua variabel.
+
+#### **Dari visualisasi scatter plot antara Sales dan Profit, kita dapat menginterpretasikan beberapa pola dan insight sebagai berikut:**
+- Tren Hubungan Positif: Scatter plot menunjukkan adanya korelasi positif antara Penjualan (Sales) dan Keuntungan (Profit). Garis regresi berwarna merah mengonfirmasi bahwa secara umum, peningkatan nilai penjualan diikuti oleh peningkatan laba bersih.
+- Stabilitas Data: Hubungan ini terlihat paling stabil pada transaksi skala kecil hingga menengah (Sales < 5.000 USD), di mana titik data cenderung mengumpul dekat dengan garis tren.
+- Variabilitas Data: Seiring bertambahnya nilai Sales, sebaran data makin melebar. Ini menunjukkan bahwa pada transaksi besar, Sales tidak lagi menjadi satu-satunya penentu keuntungan. Faktor lain (seperti diskon atau biaya logistik) mulai mendominasi.
+- Identifikasi Outliers (Pencilan):
+**High Profit Sales:** Ditemukan transaksi dengan Sales menengah namun menghasilkan profit yang sangat tinggi (jauh di atas garis regresi). Ini adalah area  transaksi paling efisien.
+**Critical Negative Outliers (Boncos):** Terdeteksi transaksi dengan volume Sales sangat besar (> 20.000 USD) namun mencatatkan profit negatif.Ini adalah outlier berbahaya yang menunjukkan adanya inefisiensi fatal, kemungkinan akibat kebijakan diskon yang terlalu agresif atau pembengkakan biaya operasional/pengiriman pada proyek besar.
+
+*Kesimpulan Strategis: Secara keseluruhan, strategi meningkatkan volume penjualan efektif untuk menaikkan profit. Namun, manajemen perlu melakukan audit terhadap transaksi bernilai besar yang justru merugi guna menjaga stabilitas margin keuntungan perusahaan.*
+
+## **Box Plot: Quantity vs Profit**
+```{r}
+ggplot(data2, aes(x = as.factor(Quantity), y = Profit)) +
+  geom_boxplot(fill = "lightblue", color = "darkblue") +
+  labs(title = "Distribusi Profit Berdasarkan Jumlah Barang yang Dibeli (Quantity)",
+       subtitle = "Dataset: Sample Superstore",
+       x = "Jumlah Barang yang Dibeli (Quantity)",
+       y = "Keuntungan (Profit)") +
+  theme_minimal()
+```
+
+- Box plot menunjukkan distribusi Profit untuk setiap kategori Quantity (jumlah barang yang dibeli).
+- Setiap box plot mewakili distribusi profit untuk transaksi dengan jumlah barang tertentu, dengan garis tengah (median), kotak (interquartile range), dan whiskers (rentang data yang tidak dianggap outliers).
+
+#### **Dari visualisasi box plot antara Quantity dan Profit, kita dapat menginterpretasikan beberapa pola dan insight sebagai berikut:**
+1. Transaksi Jumlah Kecil Lebih Stabil
+Untuk pembelian barang dalam jumlah sedikit (Quantity 1-2), keuntungan yang didapat cenderung stabil dan konsisten. Di zona ini, risiko kerugian sangat kecil karena variasinya tidak lebar, sehingga hasilnya lebih mudah diprediksi oleh perusahaan.
+
+2. Risiko Kerugian di Jumlah Menengah (Quantity 4-9)Pada rentang ini, grafik menunjukkan fluktuasi yang sangat tajam.
+- Banyak Outlier Negatif: Artinya, cukup banyak transaksi yang justru mengalami kerugian besar, terutama pada penjualan 5 barang.
+- Hal ini mengindikasikan bahwa pemberian diskon pada pembelian jumlah menengah mungkin terlalu besar, sehingga pendapatan tidak bisa menutupi biaya operasional atau modal barang.
+
+3. Pola pada Penjualan Skala Besar
+Uniknya, ketika jumlah barang yang dibeli semakin banyak (di atas 10), grafik cenderung merapat kembali ke titik stabil. Meskipun ada keuntungan yang sangat tinggi di jumlah 13 barang, namun secara umum penjualan borongan (Quantity 11 dan 14) terlihat memiliki skema harga yang lebih rapi dan terkendali. 
+
+*Perusahaan perlu memberikan perhatian khusus pada transaksi di "Zona Menengah" (Quantity 4-9). Ketidakpastian profit di zona ini menunjukkan bahwa kebijakan diskon volume mungkin belum optimal, sehingga menyebabkan beberapa transaksi mengalami kerugian besar meskipun volume penjualan mencukupi.*
+
+
+# **Visualisasi Deret Waktu (Time Series)**
+
+## **Line Plot: Tren Penjualan Bulanan (Total Sales per Month)**
+
+```{r}
+data_monthly <- data3 %>%
+  mutate(Order_Date = mdy(`Order Date`)) %>%
+  mutate(Month_Year = floor_date(Order_Date, "month")) %>%
+  group_by(Month_Year) %>%
+  summarise(Total_Sales = sum(Sales, na.rm = TRUE)) %>%
+  filter(!is.na(Month_Year))
+
+ggplot(data_monthly, aes(x = Month_Year, y = Total_Sales)) +
+  geom_area(fill = "steelblue", alpha = 0.2) +
+  # Garis utama
+  geom_line(color = "steelblue", size = 1) +
+  # Titik setiap bulan
+  geom_point(color = "darkblue", size = 1.5) +
+  # Format Sumbu Y menjadi Dollar 
+  scale_y_continuous(labels = label_dollar()) +
+  # Atur tampilan Sumbu X agar per tahun
+  scale_x_date(date_breaks = "6 months", date_labels = "%b %Y") +
+  labs(
+    title = "Tren Penjualan Bulanan (Total Sales per Month)",
+    subtitle = "Data: Sample - Superstore (2014 - 2017)",
+    x = "Periode Waktu",
+    y = "Total Penjualan"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 0.7)) # Miringkan teks tanggal
+```
+
+- Line plot ini menunjukkan tren penjualan bulanan (Total Sales per Month) dari tahun 2014 hingga 2017.
+- Area di bawah garis memberikan efek visual yang lebih menarik, sementara titik-titik pada setiap bulan membantu mengidentifikasi fluktuasi penjualan secara lebih jelas.
+
+#### **Dari visualisasi line plot tren penjualan bulanan, kita dapat menginterpretasikan beberapa pola dan insight sebagai berikut:**
+- Jualan Ramai di Akhir Tahun. Grafiknya selalu naik tinggi pas mau ganti tahun (bulan September sampai Desember). Kayaknya ini karena banyak promo akhir tahun atau orang-orang lagi belanja buat liburan.
+- Namun, Pada awal Tahun terlihat Sepi. Tiap masuk bulan Januari atau Februari, grafiknya turun drastis. Ini wajar sih, mungkin karena orang-orang baru habis keluar duit banyak di akhir tahun, jadi awal tahun jualan agak lesu.
+- Kalau dilihat dari tahun pertama (2014) sampai tahun terakhir (2017), puncak grafiknya makin lama makin tinggi. Artinya, toko ini penjualannya makin berkembang tiap tahun, nggak jalan di tempat.
+
+*Kesimpulan: Toko ini punya pola penjualan yang sangat musiman, dengan puncak di akhir tahun dan penurunan di awal tahun. Strategi pemasaran yang fokus pada promo akhir tahun bisa sangat efektif, sementara untuk mengatasi penurunan di awal tahun, mungkin bisa dipertimbangkan untuk mengadakan promo khusus atau memperkenalkan produk baru untuk menarik pelanggan.*
