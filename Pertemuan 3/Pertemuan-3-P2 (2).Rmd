@@ -1,0 +1,1087 @@
+---
+title: "Praktikum 3 Visualisasi Data - Paralel 2"
+author: "Cindy Indriyani"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: 
+  html_document:
+    theme: united
+    toc: true
+    toc_float: true
+    code_folding: hide
+    df_print: paged
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+# Load Data
+
+```{r}
+data <- read.csv("C:/Visualisasi Data Praktikum P2/patient_segmentation_dataset.csv", sep=",")
+data <- as.data.frame(data)
+head(data)
+```
+
+# Pustaka 
+
+```{r}
+# Install dan load packages yang diperlukan
+#install.packages(c("ggplot2", "dplyr", "plotly", "treemap", "corrplot","reshape2", "lubridate", "viridis"))
+#install.packages("networkD3")
+
+library(ggplot2)      # untuk visualisasi dasar
+library(dplyr)        # untuk manipulasi data
+library(plotly)       # untuk visualisasi interaktif
+library(treemap)      # untuk tree map
+library(corrplot)     # untuk correlogram
+library(reshape2)     # untuk transformasi data
+library(lubridate)    # untuk manipulasi tanggal
+library(viridis)      # untuk skema warna
+library(networkD3)
+```
+
+# Eksplorasi Data
+
+```{r}
+str(data)
+```
+
+```{r}
+# Konversi kolom tanggal
+data$Last_Visit_Date <- as.Date(data$Last_Visit_Date)  # konversi ke format tanggal
+```
+
+```{r}
+# Konversi dengan lubridate
+library(lubridate)
+data$Last_Visit_Date <- ymd(data$Last_Visit_Date)  # konversi format YYYY-MM-DD
+data
+```
+
+```{r}
+data$Preventive_Care_Flag <- factor(data$Preventive_Care_Flag)
+```
+
+```{r}
+library(dplyr)
+
+data <- data %>%
+  mutate(Preventive_Care_Flag = factor(
+    Preventive_Care_Flag,
+    levels = c(0, 1),
+    labels = c("No", "Yes")
+  ))
+```
+
+```{r}
+str(data)
+```
+
+# Visualisasi Proporsi
+
+## Pie Chart
+
+Menampilkan proporsi atau persentase dari keseluruhan untuk 2-6 kategori dalam bentuk lingkaran yang mudah dipahami audiens umum.
+
+```{r}
+# Menghitung frekuensi Insurance_Type
+insurance_count <- data %>%
+  count(Insurance_Type) %>%  # menghitung jumlah per kategori
+  mutate(percentage = n/sum(n)*100)  # menghitung persentase
+
+# Pie chart dasar
+pie(insurance_count$n,  # nilai untuk setiap slice
+    labels = paste(insurance_count$Insurance_Type, 
+                   "\n", round(insurance_count$percentage, 1), "%"),  # label dengan persentase
+    main = "Proporsi Jenis Asuransi Pasien",  # judul
+    col = rainbow(nrow(insurance_count)))  # warna pelangi
+
+# Pie chart dengan ggplot2 (lebih modern)
+ggplot(insurance_count, aes(x = "", y = n, fill = Insurance_Type)) +
+  geom_bar(stat = "identity", width = 1) +  # membuat bar chart
+  coord_polar("y", start = 0) +  # mengubah ke koordinat polar (pie)
+  theme_void() +  # tema kosong tanpa axis
+  labs(title = "Proporsi Jenis Asuransi Pasien",
+       fill = "Jenis Asuransi") +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")),  # menambahkan label persentase
+            position = position_stack(vjust = 0.5))  # posisi di tengah slice
+
+```
+
+## Stacked Bar Chart untuk Proporsi
+
+Membandingkan komposisi atau proporsi antar beberapa kelompok sekaligus dalam satu visualisasi.
+
+```{r}
+# Proporsi Gender berdasarkan Insurance_Type
+gender_insurance <- data %>%
+  count(Insurance_Type, Gender) %>%  # hitung kombinasi insurance dan gender
+  group_by(Insurance_Type) %>%  # kelompokkan berdasarkan insurance
+  mutate(percentage = n/sum(n)*100)  # hitung persentase per insurance type
+
+# Stacked bar chart (count)
+ggplot(gender_insurance, aes(x = Insurance_Type, y = n, fill = Gender)) +
+  geom_bar(stat = "identity") +  # bar chart dengan tinggi sesuai nilai
+  labs(title = "Distribusi Gender berdasarkan Jenis Asuransi",
+       x = "Jenis Asuransi",
+       y = "Jumlah Pasien",
+       fill = "Jenis Kelamin") +
+  theme_minimal() +  # tema minimalis
+  scale_fill_brewer(palette = "Set2")  # skema warna
+
+# Stacked bar chart (percentage  100%)
+ggplot(gender_insurance, aes(x = Insurance_Type, y = percentage, fill = Gender)) +
+  geom_bar(stat = "identity", position = "fill") +  # position fill = proporsi 100%
+  labs(title = "Proporsi Gender berdasarkan Jenis Asuransi",
+       x = "Jenis Asuransi",
+       y = "Proporsi (%)",
+       fill = "Jenis Kelamin") +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +  # format persen
+  theme_minimal()
+
+```
+
+
+## Tree Map
+
+Menampilkan hierarki data dan proporsi banyak kategori (10-100) secara efisien dengan kotak bersarang berbeda ukuran.
+
+```{r}
+# Agregasi data untuk tree map
+condition_count <- data %>%
+  count(Primary_Condition) %>%  # hitung frekuensi kondisi
+  arrange(desc(n))  # urutkan dari terbesar
+
+# Tree map
+treemap(condition_count,  # data frame
+        index = "Primary_Condition",  # variabel untuk kotak
+        vSize = "n",  # ukuran kotak berdasarkan frekuensi
+        title = "Tree Map: Distribusi Kondisi Penyakit Utama",
+        fontsize.labels = 10,  # ukuran font label
+        palette = "Set3",  # palet warna
+        border.col = "white",  # warna border
+        border.lwds = 2)  # ketebalan border
+
+# Tree map dengan 2 level (State dan Insurance)
+state_insurance <- data %>%
+  count(State, Insurance_Type) %>%
+  filter(n > 5)  # filter untuk state dengan data cukup
+
+treemap(state_insurance,
+        index = c("State", "Insurance_Type"),  # 2 level hierarki
+        vSize = "n",
+        title = "Tree Map: Distribusi State dan Jenis Asuransi",
+        fontsize.labels = c(12, 8),  # ukuran font berbeda per level
+        palette = "Blues")
+
+```
+
+- Ukuran kotak menunjukkan jumlah pasien (kotak besar = banyak pasien)
+
+- Warna menunjukkan jenis asuransi (biru tua = Medicare, hijau = Private, biru muda = Medicaid, kuning = Self-Pay)
+
+- Label besar (GA, OH, IL, dll) adalah kode negara bagian
+
+- Label kecil di dalam kotak menunjukkan jenis asuransi di state tersebut
+
+State dengan pasien terbanyak:
+
+- Pennsylvania (PA): kotak paling besar, sangat dominan Medicare (biru tua)
+
+New York (NY): kotak besar, mayoritas Medicare
+
+Dominasi Medicare:
+
+- Hampir semua state didominasi warna biru (Medicare)
+
+Medicare adalah jenis asuransi paling umum di dataset ini
+
+`Distribusi ini bisa mencerminkan ukuran populasi state atau coverage area rumah sakit`
+
+## Nested Pie Chart atau Donut Chart
+
+Menampilkan hierarki 2-3 level kategori dan subkategori dalam bentuk lingkaran bersarang
+
+```{r}
+# Donut chart dengan ggplot2
+ggplot(insurance_count, aes(x = 2, y = n, fill = Insurance_Type)) +  # x=2 untuk donut
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  xlim(0.5, 2.5) +  # membuat lubang di tengah
+  theme_void() +
+  labs(title = "Donut Chart: Proporsi Jenis Asuransi",
+       fill = "Jenis Asuransi") +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")),
+            position = position_stack(vjust = 0.5))
+
+# Nested pie chart (sunburst) dengan plotly
+insurance_gender <- data %>%
+  count(Insurance_Type, Gender)
+
+plot_ly(insurance_gender,
+        labels = ~paste(Insurance_Type, Gender),  # label kombinasi
+        parents = ~Insurance_Type,  # parent category
+        values = ~n,  # nilai
+        type = 'sunburst',  # tipe sunburst
+        branchvalues = "total") %>%  # perhitungan nilai
+  layout(title = "Nested Pie Chart: Asuransi dan Gender")
+
+```
+
+```{r}
+# Mengkonversi data menjadi data frame (memastikan format yang benar)
+data <- as.data.frame(data)
+
+# Membuat data untuk cincin dalam berdasarkan Insurance_Type
+inner_data <- data %>%
+  # Mengelompokkan data berdasarkan tipe asuransi
+  group_by(Insurance_Type) %>%
+  # Menghitung jumlah pasien untuk setiap tipe asuransi
+  summarise(count = n()) %>%
+  # Menambahkan kolom-kolom perhitungan untuk posisi dan label
+  mutate(
+    # Menghitung fraksi/proporsi setiap kategori dari total
+    fraction = count / sum(count),
+    # Menghitung posisi maksimum (akhir) segmen secara kumulatif
+    ymax = cumsum(fraction),
+    # Menghitung posisi minimum (awal) segmen
+    ymin = c(0, head(ymax, n=-1)),
+    # Menghitung posisi tengah untuk menempatkan label
+    labelPosition = (ymax + ymin) / 2,
+    # Membuat label dengan format: Nama \n Jumlah (Persentase%)
+    label = paste0(Insurance_Type, "\n", count, " (", round(fraction*100, 1), "%)")
+  )
+
+# Membuat data untuk cincin luar berdasarkan Gender
+outer_data <- data %>%
+  # Mengelompokkan data berdasarkan jenis kelamin
+  group_by(Gender) %>%
+  # Menghitung jumlah pasien untuk setiap jenis kelamin
+  summarise(count = n()) %>%
+  # Menambahkan kolom-kolom perhitungan untuk posisi dan label
+  mutate(
+    # Menghitung fraksi/proporsi setiap kategori dari total
+    fraction = count / sum(count),
+    # Menghitung posisi maksimum (akhir) segmen secara kumulatif
+    ymax = cumsum(fraction),
+    # Menghitung posisi minimum (awal) segmen
+    ymin = c(0, head(ymax, n=-1)),
+    # Menghitung posisi tengah untuk menempatkan label
+    labelPosition = (ymax + ymin) / 2,
+    # Membuat label dengan format: Nama \n Jumlah (Persentase%)
+    label = paste0(Gender, "\n", count, " (", round(fraction*100, 1), "%)")
+  )
+
+
+# Memulai pembuatan plot dengan ggplot
+p <- ggplot() +
+  
+  # Membuat persegi panjang yang akan menjadi cincin dalam
+  geom_rect(data = inner_data,  # Menggunakan data inner_data
+            aes(ymax=ymax,      # Posisi akhir segmen
+                ymin=ymin,      # Posisi awal segmen
+                xmax=3,         # Radius luar cincin dalam
+                xmin=2,         # Radius dalam cincin dalam
+                fill=Insurance_Type),  # Warna berdasarkan tipe asuransi
+            color="white",      # Warna garis pembatas antar segmen
+            size=0.5) +         # Ketebalan garis pembatas
+  
+  # Membuat persegi panjang yang akan menjadi cincin luar
+  geom_rect(data = outer_data,  # Menggunakan data outer_data
+            aes(ymax=ymax,      # Posisi akhir segmen
+                ymin=ymin,      # Posisi awal segmen
+                xmax=4,         # Radius luar cincin luar
+                xmin=3.1,       # Radius dalam cincin luar (ada jarak 0.1 dari cincin dalam)
+                fill=Gender),   # Warna berdasarkan jenis kelamin
+            color="white",      # Warna garis pembatas antar segmen
+            size=0.5) +         # Ketebalan garis pembatas
+  
+
+  # Menambahkan teks label pada cincin dalam
+  geom_text(data = inner_data,  # Menggunakan data inner_data
+            aes(x=2.5,          # Posisi horizontal (tengah antara 2 dan 3)
+                y=labelPosition,  # Posisi vertikal di tengah segmen
+                label=label),   # Teks yang akan ditampilkan
+            size=3.5,           # Ukuran font
+            fontface="bold") +  # Teks tebal
+  
+  # Menambahkan teks label pada cincin luar
+  geom_text(data = outer_data,  # Menggunakan data outer_data
+            aes(x=3.55,         # Posisi horizontal (tengah antara 3.1 dan 4)
+                y=labelPosition,  # Posisi vertikal di tengah segmen
+                label=label),   # Teks yang akan ditampilkan
+            size=4,             # Ukuran font (sedikit lebih besar dari inner)
+            fontface="bold") +  # Teks tebal
+  
+  # Mengubah koordinat Cartesian menjadi polar untuk membentuk lingkaran
+  coord_polar(theta="y") +      # Sumbu y yang dilingkarkan
+  
+  # Mengatur batas sumbu x untuk menciptakan lubang di tengah donut
+  xlim(c(0, 4)) +               # Dari 0 (pusat) sampai 4 (tepi luar)
+  
+  # Menentukan warna manual untuk setiap kategori
+  scale_fill_manual(values = c(
+    # Warna untuk tipe asuransi (cincin dalam)
+    "Medicare" = "#FF6B6B",     # Merah muda untuk Medicare
+    "Private" = "#4ECDC4",      # Tosca untuk Private
+    "Medicaid" = "#45B7D1",     # Biru untuk Medicaid
+    # Warna untuk jenis kelamin (cincin luar)
+    "Male" = "#95E1D3",         # Hijau mint untuk Male
+    "Female" = "#F38181"        # Pink untuk Female
+  )) +
+  
+  # Menggunakan tema void (tanpa sumbu, grid, background)
+  theme_void() +
+  
+  theme(
+    # Posisi legenda di sebelah kanan
+    legend.position = "right",
+    # Judul legenda dengan font tebal ukuran 12
+    legend.title = element_text(face="bold", size=12),
+    # Judul plot di tengah, tebal, ukuran 16, dengan margin bawah 20
+    plot.title = element_text(hjust=0.5, face="bold", size=16, margin=margin(b=20)),
+    # Subjudul di tengah, ukuran 11, warna abu-abu, margin bawah 10
+    plot.subtitle = element_text(hjust=0.5, size=11, color="gray40", margin=margin(b=10))
+  ) +
+  
+  labs(
+    # Judul utama plot
+    title = "Nested Donut Chart: Patient Segmentation",
+    # Subjudul dengan penjelasan cincin
+    subtitle = "Inner Ring: Insurance Type | Outer Ring: Gender",
+    # Label untuk legenda
+    fill = "Category"
+  )
+
+# Menampilkan plot di layar
+print(p)
+
+# Menyimpan plot sebagai file PNG
+ggsave("nested_donut_chart.png",  # Nama file output
+       plot = p,                  # Plot yang akan disimpan
+       width = 12,                # Lebar dalam inch
+       height = 8,                # Tinggi dalam inch
+       dpi = 300,                 # Resolusi (dots per inch)
+       bg="white")                # Background putih
+
+# Menampilkan header ringkasan
+cat("\n=== SUMMARY ===\n")
+
+# Menampilkan data cincin dalam
+cat("\nInner Ring (Insurance Type):\n")
+print(inner_data[, c("Insurance_Type", "count", "fraction")])
+
+# Menampilkan data cincin luar
+cat("\nOuter Ring (Gender):\n")
+print(outer_data[, c("Gender", "count", "fraction")])
+
+# Menampilkan informasi file yang disimpan
+cat("\nPlot saved as: nested_donut_chart.png\n")
+```
+
+Distribusi pasien berdasarkan gender menunjukkan proporsi yang seimbang antara laki-laki dan perempuan. Dari sisi jenis asuransi, mayoritas pasien menggunakan Medicare, diikuti oleh asuransi swasta dan Medicaid, sementara pasien dengan skema pembayaran mandiri relatif sedikit. Hal ini menunjukkan bahwa populasi pasien didominasi oleh individu yang memiliki perlindungan asuransi, dengan indikasi kuat keterwakilan kelompok usia lanjut.
+
+```{r}
+
+# Mengkonversi data menjadi data frame (memastikan format yang benar)
+data <- as.data.frame(data)
+
+# PERSIAPAN DATA UNTUK CINCIN PALING DALAM (INSURANCE TYPE)
+
+# Membuat data untuk cincin paling dalam berdasarkan Insurance_Type
+innermost_data <- data %>%
+  # Mengelompokkan data berdasarkan tipe asuransi
+  group_by(Insurance_Type) %>%
+  # Menghitung jumlah pasien untuk setiap tipe asuransi
+  summarise(count = n()) %>%
+  # Menambahkan kolom-kolom perhitungan untuk posisi dan label
+  mutate(
+    # Menghitung fraksi/proporsi setiap kategori dari total
+    fraction = count / sum(count),
+    # Menghitung posisi maksimum (akhir) segmen secara kumulatif
+    ymax = cumsum(fraction),
+    # Menghitung posisi minimum (awal) segmen
+    ymin = c(0, head(ymax, n=-1)),
+  )
+
+# PERSIAPAN DATA UNTUK CINCIN TENGAH (GENDER)
+
+# Membuat data untuk cincin tengah berdasarkan Gender
+middle_data <- data %>%
+  # Mengelompokkan data berdasarkan jenis kelamin
+  group_by(Gender) %>%
+  # Menghitung jumlah pasien untuk setiap jenis kelamin
+  summarise(count = n()) %>%
+  # Menambahkan kolom-kolom perhitungan untuk posisi dan label
+  mutate(
+    # Menghitung fraksi/proporsi setiap kategori dari total
+    fraction = count / sum(count),
+    # Menghitung posisi maksimum (akhir) segmen secara kumulatif
+    ymax = cumsum(fraction),
+    # Menghitung posisi minimum (awal) segmen
+    ymin = c(0, head(ymax, n=-1)),
+    
+  )
+
+# PERSIAPAN DATA UNTUK CINCIN LUAR (PREVENTIVE CARE)
+
+# Membuat data untuk cincin luar berdasarkan Preventive_Care_Flag
+outer_data <- data %>%
+  # Mengelompokkan data berdasarkan flag preventive care
+  group_by(Preventive_Care_Flag) %>%
+  # Menghitung jumlah pasien untuk setiap kategori
+  summarise(count = n()) %>%
+  # Menambahkan kolom-kolom perhitungan untuk posisi dan label
+  mutate(
+    # Membuat kategori yang lebih deskriptif (0=No, 1=Yes)
+    Category = ifelse(Preventive_Care_Flag == 1, "Yes", "No"),
+    # Menghitung fraksi/proporsi setiap kategori dari total
+    fraction = count / sum(count),
+    # Menghitung posisi maksimum (akhir) segmen secara kumulatif
+    ymax = cumsum(fraction),
+    # Menghitung posisi minimum (awal) segmen
+    ymin = c(0, head(ymax, n=-1)),
+    
+  )
+
+# MEMBUAT NESTED DONUT CHART 3 LAYER
+
+# Memulai pembuatan plot dengan ggplot
+p <- ggplot() +
+  
+  # Cincin paling dalam (Insurance Type)
+  # Membuat persegi panjang yang akan menjadi cincin paling dalam
+  geom_rect(data = innermost_data,
+            aes(ymax=ymax, ymin=ymin, xmax=2.8, xmin=1.8, fill=Insurance_Type),
+            color="white", size=0.8) +
+  
+  # Cincin tengah (Gender)
+  # Membuat persegi panjang yang akan menjadi cincin tengah
+  geom_rect(data = middle_data,
+            aes(ymax=ymax, ymin=ymin, xmax=3.9, xmin=3.0, fill=Gender),
+            color="white", size=0.8) +
+  
+  # Cincin luar (Preventive Care)
+  # Membuat persegi panjang yang akan menjadi cincin luar
+  geom_rect(data = outer_data,
+            aes(ymax=ymax, ymin=ymin, xmax=5.2, xmin=4.1, fill=Category),
+            color="white", size=0.8) +
+  
+  
+  
+  # Mengubah koordinat Cartesian menjadi polar untuk membentuk lingkaran
+  coord_polar(theta="y") +
+  
+  # Mengatur batas sumbu x untuk menciptakan lubang di tengah donut
+  xlim(c(0.5, 5.2)) +
+  
+  # Menentukan warna manual untuk setiap kategori
+  scale_fill_manual(values = c(
+    "Medicare" = "#E74C3C",
+    "Private" = "#3498DB",
+    "Medicaid" = "#9B59B6",
+    "Male" = "#1ABC9C",
+    "Female" = "#E91E63",
+    "Yes" = "#27AE60",
+    "No" = "#F39C12"
+  )) +
+  
+  # Menggunakan tema void (tanpa sumbu, grid, background)
+  theme_void() +
+  
+  # Kustomisasi tema
+  theme(
+    legend.position = "right",
+    legend.title = element_text(face="bold", size=13),
+    legend.text = element_text(size=11),
+    plot.title = element_text(hjust=0.5, face="bold", size=18, margin=margin(b=15)),
+    plot.subtitle = element_text(hjust=0.5, size=11, color="gray40", margin=margin(b=20)),
+    plot.margin = margin(20, 20, 20, 20)
+  ) +
+  
+  # Label dan judul
+  labs(
+    title = "3-Layer Nested Donut Chart: Patient Segmentation",
+    subtitle = "Inner: Insurance Type | Middle: Gender | Outer: Preventive Care Flag",
+    fill = "Category"
+  )
+
+# Menampilkan plot di layar
+print(p)
+
+# Menyimpan plot sebagai file PNG dengan resolusi lebih tinggi
+ggsave("nested_donut_3layer_improved.png",
+       plot = p,
+       width = 16,
+       height = 12,
+       dpi = 300,
+       bg="white")
+
+# Menampilkan ringkasan data
+
+# Menampilkan data cincin paling dalam
+cat("\nInnermost Ring (Insurance Type):\n")
+print(innermost_data[, c("Insurance_Type", "count", "fraction")])
+
+# Menampilkan data cincin tengah
+cat("\nMiddle Ring (Gender):\n")
+print(middle_data[, c("Gender", "count", "fraction")])
+
+# Menampilkan data cincin luar
+cat("\nOuter Ring (Preventive Care):\n")
+print(outer_data[, c("Category", "count", "fraction")])
+
+# Menampilkan informasi file yang disimpan
+cat("\nPlot saved as: nested_donut_3layer_improved.png\n")
+```
+
+
+## Paralel Set Chart (Alluvial Diagram)
+
+Menunjukkan aliran atau perpindahan antar kategori untuk melihat hubungan kompleks antara beberapa variabel kategorikal
+
+```{r}
+# Contoh: Gender ke Insurance Type
+
+sankey_prep <- data %>%
+  count(Gender, Insurance_Type, name = "value")
+
+# Buat mapping untuk nodes
+# unique() mengambil nilai unik saja (tidak duplikat)
+# c() menggabungkan vektor Gender dan Insurance_Type
+all_nodes <- unique(c(sankey_prep$Gender, sankey_prep$Insurance_Type))
+
+# Buat data frame nodes dengan ID numerik (dimulai dari 0)
+node_df <- data.frame(
+  name = all_nodes,
+  id = 0:(length(all_nodes)-1)
+)
+
+#  Join dengan node_df untuk mendapat ID source (Gender)
+# left_join menggabungkan tabel berdasarkan kolom yang cocok
+  # by = c("Gender" = "name") artinya kolom Gender di sankey_prep, dicocokkan dengan kolom name di node_df
+# Map source dan target
+sankey_prep <- sankey_prep %>%
+  left_join(node_df, by = c("Gender" = "name")) %>%
+  rename(source = id) %>%
+  left_join(node_df, by = c("Insurance_Type" = "name")) %>%
+  rename(target = id)
+
+# Buat Sankey diagram
+# tipe visualisasi = sankey diagram
+# h = horizontal (kiri ke kanan), v = vertical
+# jarak antar node (dalam pixel): pad
+# ketebalan kotak node (dalam pixel): thickness
+
+plot_ly(
+  type = "sankey",
+  orientation = "h",
+  
+  node = list(
+    label = node_df$name,
+    color = c("lightblue", "lightpink",  # gender colors
+              "steelblue", "coral", "lightgreen", "gold"),  # insurance colors
+    pad = 15,
+    thickness = 20,
+    line = list(color = "black", width = 0.5)
+  ),
+  
+  link = list(
+    source = sankey_prep$source,# ID node asal (dari kolom source)
+    target = sankey_prep$target,# ID node tujuan (dari kolom target)
+    value = sankey_prep$value,# ketebalan aliran (dari kolom value)
+    color = "rgba(100, 100, 100, 0.2)"
+  )
+) %>%
+  layout(
+    title = "Sankey Diagram: Gender → Jenis Asuransi",
+    font = list(size = 12)
+  )
+```
+
+
+- Sisi kiri menunjukkan Gender (Female = biru muda atas, Male = pink bawah)
+
+- Sisi kanan menunjukkan Jenis Asuransi (Medicare, Private, Medicaid, Self-Pay)
+
+- Lebar aliran menunjukkan jumlah pasien
+
+- Warna aliran mengikuti gender asal untuk memudahkan tracking
+
+Proporsi gender:
+
+- Female dan Male hampir seimbang berdasarkan ukuran kotak di sisi kiri
+
+- Distribusi pasien cenderung merata antara pria dan wanita
+
+Medicare dominan:
+
+- Aliran terbesar dari kedua gender menuju Medicare (warna abu-abu di kanan)
+
+- Medicare mencakup sekitar 40-50 persen dari total pasien
+
+
+
+```{r}
+#Ambil 5 kondisi penyakit paling sering
+top_conditions <- data %>%
+  count(Primary_Condition, sort = TRUE) %>%  
+  # count dengan sort = TRUE otomatis urutkan descending
+  
+  head(5) %>%  # ambil 5 baris teratas
+  
+  pull(Primary_Condition)  
+  # pull() ekstrak kolom menjadi vektor (bukan data frame)
+
+print(top_conditions)
+
+# Link 1: Gender ke Insurance Type
+link1 <- data %>%
+  count(Gender, Insurance_Type, name = "value")
+# Sama seperti alternatif 1
+
+# Link 2: Insurance Type ke Primary Condition (hanya top 5)
+link2 <- data %>%
+  filter(Primary_Condition %in% top_conditions) %>%  
+  # %in% operator: cek apakah nilai ada dalam vektor
+  # filter hanya baris dengan Primary_Condition di top_conditions
+  
+  count(Insurance_Type, Primary_Condition, name = "value")
+
+head(link1)
+head(link2)
+
+
+all_nodes <- unique(c(
+  link1$Gender,              # nodes dari Gender
+  link1$Insurance_Type,      # nodes dari Insurance
+  link2$Primary_Condition    # nodes dari Condition
+))
+# c() menggabungkan 3 vektor
+# unique() hapus duplikat (Insurance_Type muncul 2x)
+
+# Buat data frame nodes dengan ID
+node_df <- data.frame(
+  name = all_nodes,
+  id = 0:(length(all_nodes)-1)
+)
+
+print(node_df)
+
+# MAP LINK 1 (Gender ke Insurance)
+link1_mapped <- link1 %>%
+  # Join untuk source (Gender)
+  left_join(node_df, by = c("Gender" = "name")) %>%
+  rename(source = id) %>%
+  
+  # Join untuk target (Insurance_Type)
+  left_join(node_df, by = c("Insurance_Type" = "name")) %>%
+  rename(target = id) %>%
+  
+  select(source, target, value)  
+  # select() memilih kolom tertentu saja
+  # buang kolom Gender dan Insurance_Type, simpan source, target, value
+
+head(link1_mapped)
+
+# MAP LINK 2 (Insurance ke Kondisi)
+link2_mapped <- link2 %>%
+  # Join untuk source (Insurance_Type)
+  left_join(node_df, by = c("Insurance_Type" = "name")) %>%
+  rename(source = id) %>%
+  
+  # Join untuk target (Primary_Condition)
+  left_join(node_df, by = c("Primary_Condition" = "name")) %>%
+  rename(target = id) %>%
+  
+  select(source, target, value)
+
+head(link2_mapped)
+
+
+# Gabung semua
+all_links <- bind_rows(link1_mapped, link2_mapped)
+# bind_rows() menggabungkan data frame secara vertikal (row-wise)
+# Semua baris dari link1_mapped ditambah semua baris dari link2_mapped
+
+nrow(link1_mapped)  # misal: 8 baris
+nrow(link2_mapped)  # misal: 20 baris
+nrow(all_links)     # hasil: 28 baris
+
+
+# Plot Sankey level 3
+plot_ly(
+  type = "sankey",
+  orientation = "h",
+  
+  node = list(
+    label = node_df$name,  # label semua nodes
+    pad = 15,
+    thickness = 20
+    # Tidak perlu definisi warna, akan otomatis diberi warna
+  ),
+  
+  link = list(
+    source = all_links$source,  # gabungan source dari link1 & link2
+    target = all_links$target,  # gabungan target dari link1 & link2
+    value = all_links$value     # gabungan value dari link1 & link2
+  )
+) %>%
+  layout(
+    title = "Sankey 3 Level: Gender → Asuransi → Top 5 Kondisi",
+    font = list(size = 10)  # font lebih kecil karena banyak label
+  )
+```
+
+```{r}
+
+alluvial_data <- data %>%
+  count(Gender, Insurance_Type) %>%
+  rename(source = Gender,           # ganti nama kolom
+         target = Insurance_Type,   
+         value = n)                 # n dari count() jadi value
+
+head(alluvial_data)
+
+
+# buat node list
+nodes <- data.frame(
+  name = unique(c(
+    as.character(alluvial_data$source),   
+    # as.character() konversi ke tipe character (untuk keamanan)
+    
+    as.character(alluvial_data$target)
+  ))
+)
+# unique() buang duplikat
+# Hasil: data frame 1 kolom berisi semua nama node unik
+
+print(nodes)
+
+
+# map ke numeric id (dari 0)
+# networkD3 membutuhkan ID numerik mulai dari 0
+
+alluvial_data$IDsource <- match(alluvial_data$source, nodes$name) - 1
+# match(x, y) mencari posisi x dalam vektor y
+# match("Male", nodes$name) → 1 (posisi Male di nodes)
+# -1 karena networkD3 index mulai dari 0, bukan 1
+
+alluvial_data$IDtarget <- match(alluvial_data$target, nodes$name) - 1
+
+head(alluvial_data)
+
+
+# Buat sankeynya
+sankeyNetwork(
+  Links = alluvial_data,  
+  # data frame berisi source, target, value
+  
+  Nodes = nodes,          
+  # data frame berisi nama nodes
+  
+  Source = "IDsource",    
+  # nama kolom di Links untuk source ID (harus string)
+  
+  Target = "IDtarget",    
+  # nama kolom di Links untuk target ID
+  
+  Value = "value",        
+  # nama kolom di Links untuk ketebalan link
+  
+  NodeID = "name",        
+  # nama kolom di Nodes untuk label node
+  
+  fontSize = 12,          
+  # ukuran font label
+  
+  nodeWidth = 30          
+  # lebar kotak node dalam pixel
+)
+
+```
+
+# Visualisasi Hubungan Antar Peubah Numerik
+
+## Scatter Plot
+
+Menampilkan hubungan atau korelasi antara 2 variabel numerik untuk mendeteksi pola, trend, dan outlier
+
+```{r}
+# Scatter plot dasar: Height vs Weight
+ggplot(data, aes(x = Height_cm, y = Weight_kg)) +
+  geom_point(alpha = 0.5,  # transparansi titik
+             color = "steelblue") +  # warna titik
+  labs(title = "Hubungan Tinggi Badan dan Berat Badan",
+       x = "Tinggi Badan (cm)",
+       y = "Berat Badan (kg)") +
+  theme_minimal() +
+  geom_smooth(method = "lm",  # menambahkan garis regresi linear
+              se = TRUE,  # confidence interval
+              color = "red")
+
+# Scatter plot dengan pewarnaan berdasarkan kategori
+ggplot(data, aes(x = Age, y = BMI, color = Gender)) +
+  geom_point(alpha = 0.6, size = 2) +  # ukuran titik
+  labs(title = "Hubungan Umur dan BMI berdasarkan Gender",
+       x = "Umur (tahun)",
+       y = "Body Mass Index",
+       color = "Jenis Kelamin") +
+  theme_minimal() +
+  facet_wrap(~Insurance_Type)  # pisahkan berdasarkan jenis asuransi
+
+```
+
+## Bubble Chart
+
+Scatter plot dengan dimensi ketiga (ukuran bubble) untuk menampilkan 3-4 variabel numerik sekaligus dalam satu visualisasi
+
+```{r}
+# Bubble chart: 3 variabel numerik + 1 kategori
+ggplot(data, aes(x = Age, y = Avg_Billing_Amount, 
+                 size = Annual_Visits,  # ukuran bubble
+                 color = Insurance_Type)) +  # warna berdasarkan kategori
+  geom_point(alpha = 0.5) +  # transparansi
+  scale_size(range = c(1, 15)) +  # rentang ukuran bubble
+  labs(title = "Bubble Chart: Umur, Biaya, dan Frekuensi Kunjungan",
+       x = "Umur (tahun)",
+       y = "Rata-rata Tagihan ($)",
+       size = "Kunjungan/Tahun",
+       color = "Jenis Asuransi") +
+  theme_minimal()
+
+# Bubble chart interaktif dengan plotly
+bubble_plot <- plot_ly(data, 
+                       x = ~Age, 
+                       y = ~Avg_Billing_Amount,
+                       size = ~Annual_Visits,  # ukuran bubble
+                       color = ~Insurance_Type,  # warna
+                       text = ~paste("Patient:", PatientID,  # tooltip
+                                     "<br>BMI:", BMI,
+                                     "<br>Visits:", Annual_Visits),
+                       hoverinfo = "text",
+                       type = 'scatter',
+                       mode = 'markers') %>%
+  layout(title = "Bubble Chart Interaktif: Profil Pasien",
+         xaxis = list(title = "Umur"),
+         yaxis = list(title = "Rata-rata Tagihan ($)"))
+
+bubble_plot  # tampilkan plot
+```
+
+Pasien lansia (65 tahun ke atas) yang menggunakan Medicare adalah kelompok yang paling banyak menggunakan layanan kesehatan dan mengeluarkan biaya paling tinggi. Mereka berkunjung ke rumah sakit 3-4 kali lebih sering daripada pasien muda dan biayanya 2-3 kali lebih mahal. Terlihat jelas bahwa semakin tua umur pasien, semakin sering mereka ke dokter, dan semakin tinggi biaya yang dikeluarkan.
+
+## Correlogram dan Heatmap
+
+Menampilkan korelasi antara semua pasangan variabel numerik dalam bentuk matriks untuk melihat hubungan keseluruhan data
+
+```{r}
+# Pilih variabel numerik
+numeric_vars <- data %>%
+  select(Age, Height_cm, Weight_kg, BMI, 
+         Num_Chronic_Conditions, Annual_Visits, Avg_Billing_Amount)
+
+# Hitung korelasi
+correlation_matrix <- cor(numeric_vars, use = "complete.obs")  # abaikan NA
+print(round(correlation_matrix, 2))  # tampilkan dengan 2 desimal
+
+# Correlogram dengan corrplot
+corrplot(correlation_matrix,  # matrix korelasi
+         method = "circle",  # metode: circle, square, number, color
+         type = "upper",  # tampilkan bagian atas saja
+         tl.col = "black",  # warna label
+         tl.srt = 45,  # rotasi label 45 derajat
+         addCoef.col = "black",  # tambahkan koefisien korelasi
+         number.cex = 0.7,  # ukuran angka
+         title = "Correlogram: Hubungan Antar Variabel Numerik",
+         mar = c(0,0,2,0))  # margin
+
+# Heatmap dengan ggplot2
+correlation_melted <- melt(correlation_matrix)  # ubah ke format long
+
+ggplot(correlation_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +  # kotak heatmap
+  scale_fill_gradient2(low = "blue", high = "red",  # skala warna diverging
+                       mid = "white", midpoint = 0,
+                       limit = c(-1, 1),
+                       name = "Korelasi") +
+  geom_text(aes(label = round(value, 2)), size = 3) +  # tampilkan nilai
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # rotasi label x
+  labs(title = "Heatmap: Matriks Korelasi",
+       x = "", y = "")
+
+```
+
+
+# Visualisasi Data Deret Waktu
+
+Menampilkan perubahan nilai sepanjang waktu untuk mendeteksi trend, pola musiman, dan perubahan temporal
+
+## Time series
+
+```{r}
+# Agregasi data berdasarkan tanggal
+daily_visits <- data %>%
+  count(Last_Visit_Date) %>%  # hitung kunjungan per hari
+  arrange(Last_Visit_Date)  # urutkan berdasarkan tanggal
+
+# Time series plot dasar
+ggplot(daily_visits, aes(x = Last_Visit_Date, y = n)) +
+  geom_line(color = "steelblue", size = 1) +  # garis
+  geom_point(color = "darkblue", size = 2) +  # titik
+  labs(title = "Time Series: Jumlah Kunjungan Pasien per Hari",
+       x = "Tanggal",
+       y = "Jumlah Kunjungan") +
+  theme_minimal()+
+  theme(
+    axis.text.x = element_text(angle = 45,  # rotasi 45 derajat
+                               hjust = 1)    # hjust = horizontal justification
+                                             # hjust = 1: rata kanan
+                                             # agar text tidak overlap dengan axis
+  ) +
+  scale_x_date(date_labels = "%b %Y",  # format tanggal
+               date_breaks = "1 month")  # interval
+
+
+# Time series dengan trend line
+ggplot(daily_visits, aes(x = Last_Visit_Date, y = n)) +
+  geom_line(color = "steelblue") +
+  geom_smooth(method = "loess",  # smoothing method
+              color = "red",
+              se = TRUE) +  # confidence interval
+  labs(title = "Time Series dengan Trend Line",
+       x = "Tanggal",
+       y = "Jumlah Kunjungan") +
+  theme_minimal()
+
+# Time series berdasarkan kategori
+monthly_insurance <- data %>%
+  mutate(Month = floor_date(Last_Visit_Date, "month")) %>%  # bulatkan ke bulan
+  count(Month, Insurance_Type)
+
+ggplot(monthly_insurance, aes(x = Month, y = n, color = Insurance_Type)) +
+  geom_line(size = 1) +  # garis berbeda warna per kategori
+  geom_point(size = 2) +
+  labs(title = "Time Series: Kunjungan berdasarkan Jenis Asuransi",
+       x = "Bulan",
+       y = "Jumlah Kunjungan",
+       color = "Jenis Asuransi") +
+  theme_minimal()+
+  theme(
+    axis.text.x = element_text(angle = 45,  # rotasi 45 derajat
+                               hjust = 1)    # hjust = horizontal justification
+                                             # hjust = 1: rata kanan
+                                             # agar text tidak overlap dengan axis
+  ) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "1 month")
+
+```
+
+## Area Plot
+
+Line chart dengan area terisi untuk menunjukkan volume atau magnitude sepanjang waktu, cocok untuk menampilkan komposisi bertingkat
+
+```{r}
+# Area plot untuk menunjukkan akumulasi
+ggplot(daily_visits, aes(x = Last_Visit_Date, y = n)) +
+  geom_area(fill = "steelblue", alpha = 0.6) +  # area di bawah garis
+  geom_line(color = "darkblue", size = 1) +  # garis batas
+  labs(title = "Area Plot: Volume Kunjungan Pasien",
+       x = "Tanggal",
+       y = "Jumlah Kunjungan") +
+  theme_minimal()
+
+# Stacked area plot (multiple categories)
+ggplot(monthly_insurance, aes(x = Month, y = n, fill = Insurance_Type)) +
+  geom_area(position = "stack", alpha = 0.7) +  # stack area
+  labs(title = "Stacked Area Plot: Kunjungan berdasarkan Jenis Asuransi",
+       x = "Bulan",
+       y = "Jumlah Kunjungan",
+       fill = "Jenis Asuransi") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set2")
+
+# Proportional area plot (100% stacked)
+ggplot(monthly_insurance, aes(x = Month, y = n, fill = Insurance_Type)) +
+  geom_area(position = "fill", alpha = 0.7) +  # position fill = proporsi
+  labs(title = "Proportional Area Plot: Proporsi Jenis Asuransi",
+       x = "Bulan",
+       y = "Proporsi",
+       fill = "Jenis Asuransi") +
+  scale_y_continuous(labels = scales::percent_format()) +  # format persen
+  theme_minimal()
+
+# Area plot interaktif dengan plotly
+area_plot <- plot_ly(daily_visits, 
+                     x = ~Last_Visit_Date, 
+                     y = ~n,
+                     type = 'scatter',
+                     mode = 'lines',
+                     fill = 'tozeroy',  # isi area sampai sumbu y
+                     fillcolor = 'rgba(70, 130, 180, 0.5)',  # warna dengan transparansi
+                     line = list(color = 'steelblue')) %>%
+  layout(title = "Area Plot Interaktif: Kunjungan Pasien",
+         xaxis = list(title = "Tanggal"),
+         yaxis = list(title = "Jumlah Kunjungan"))
+
+area_plot  # tampilkan plot
+
+```
+
+
+# Esquisse
+
+```{r}
+#install.packages("esquisse")
+
+# Memuat library
+library(esquisse)
+
+# Menjalankan esquisse secara interaktif
+# Ini akan membuka GUI di RStudio untuk membuat chart
+esquisser(data)
+```
+```{r}
+library(ggplot2)
+
+ggplot(data) +
+ aes(x = BMI, y = Weight_kg, colour = Gender) +
+ geom_point() +
+ geom_smooth(se = TRUE) +
+ scale_color_hue(direction = 1) +
+ labs(subtitle = "Scatter Plot", caption = "Smoothing", color = "Jenis Kelamin") +
+ theme_minimal()
+```
+
+```{r}
+# Ditambah alpha dan size
+library(ggplot2)
+
+ggplot(data) +
+ aes(x = BMI, y = Weight_kg, colour = Gender) +
+ geom_point(alpha=0.7, size=2) +
+ geom_smooth(se = TRUE) +
+ scale_color_hue(direction = 1) +
+ labs(subtitle = "Scatter Plot", caption = "Smoothing", color = "Jenis Kelamin") +
+ theme_minimal()
+```
+
+```{r}
+
+library(ggplot2)
+
+ggplot(data) +
+ aes(x = BMI, y = Weight_kg, colour = Gender, size = Annual_Visits) +
+ geom_point() +
+ scale_color_hue(direction = 1) +
+ theme_minimal()
+```
+
+# Tugas
+
+1.  Buat 3 plot untuk visualisasi proporsi, 2 plot visualisasi hubungan, dan 1 plot visualisasi deret waktu beserta *interpretasinya*.
+    Bebas pilih data dan plot apa saja.
+
+2.  Tugas dikumpulkan paling lambat Selasa jam 23.59 di link: https://ipb.link/tugas-pertemuan3-prak-visdat
+dalam format .html atau .pdf (Format file: NIM_Nama_Tugas Pertemuan 2)
